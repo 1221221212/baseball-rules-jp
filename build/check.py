@@ -10,6 +10,7 @@
 4. 差分がNPB公式改正文書の全項目を捉えているか
 """
 import collections
+import shutil
 import glob
 import json
 import os
@@ -116,22 +117,24 @@ def check_year(year):
 
 def check_official(old_y, new_y):
     """差分がNPB公式の改正文書を漏れなく捉えているか。
-    公式文書はこちらが手で書き写したもので、対応表のある年度ペアだけ検査できる。
-    成果物には含めない（任意の年度ペアでは作れないため）。"""
+
+    差分の計算そのものは ../diff.js（ビューアと同じコード）を Node で実行する。
+    実装を二重に持つと、片方だけ直したときに検査が意味を失うため。
+    公式改正文書との対応表は build/official.json（こちらが手で書き写したもの）。
+    """
     import subprocess
-    r = subprocess.run([sys.executable, os.path.join(HERE, "verify_official.py"), old_y, new_y],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        # 対応表が無い年度ペア。黙って飛ばすと「検証済み」と誤解されるので明示する
+    if not shutil.which("node"):
         print(f"[{old_y} → {new_y}]")
-        print("  公式照合         : 未実施（build/verify_official.py に対応表がありません）")
-        return False
-    print(f"[{old_y} → {new_y}]")
-    for line in r.stdout.strip().splitlines():
-        print("  " + line.strip())
-    if "拾い漏れ 0" not in r.stdout or "公式外 0" not in r.stdout:
-        bad("公式照合が合っていません")
-    return True
+        print("  公式照合         : 未実施（node がありません）")
+        return
+    r = subprocess.run(["node", os.path.join(HERE, "diff_check.js"), old_y, new_y],
+                       capture_output=True, text=True)
+    print(r.stdout.rstrip())
+    if r.returncode != 0:
+        if r.stderr.strip():
+            bad("diff_check.js が失敗: " + r.stderr.strip()[:200])
+        else:
+            bad("公式照合が合っていません")
 
 
 def main():

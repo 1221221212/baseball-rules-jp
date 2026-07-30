@@ -30,7 +30,7 @@ add:
 	python3 build/2_md2data.py
 	@echo
 	@echo "次に build/3_official.py の OFFICIAL へ公式改正文書を追記し、"
-	@echo "  python3 build/verify_official.py <前年> $(YEAR)"
+	@echo "  node build/diff_check.js <前年> $(YEAR)"
 	@echo "を実行すると、公式との照合結果が差分に載ります。"
 
 ## 取りこぼし・文字化け・参照・公式照合をまとめて検査

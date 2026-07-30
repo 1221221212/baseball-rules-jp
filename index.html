@@ -8,8 +8,8 @@
 :root{
   --bg:#fbfaf8; --panel:#fff; --line:#e4dfd7; --line2:#efebe4;
   --fg:#1c1a17; --fg2:#5f594f; --fg3:#8d8679;
-  --accent:#8a2b2b; --accent-bg:#fdf3f1;
-  --mark:#ffe9a8;
+  --accent:#1e5540; --accent-bg:#ecf3ef;
+  --mark:#cfe8d8;
   --add:#1f7a4d; --add-bg:#e9f6ef;
   --del:#a8332a; --del-bg:#fcefed;
   --chg:#9a6b1f; --chg-bg:#fbf4e6;
@@ -20,8 +20,8 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#151419; --panel:#1c1b21; --line:#34323b; --line2:#26252c;
   --fg:#e9e6e1; --fg2:#a9a49c; --fg3:#7d7871;
-  --accent:#e2857f; --accent-bg:#2a1e1e;
-  --mark:#5d4a12;
+  --accent:#8ecfae; --accent-bg:#16271f;
+  --mark:#1f4a36;
   --add:#6cc394; --add-bg:#16271e;
   --del:#e79289; --del-bg:#2e1d1b;
   --chg:#dcb069; --chg-bg:#2b2418;
@@ -32,8 +32,8 @@
 :root[data-theme=dark]{
   --bg:#151419; --panel:#1c1b21; --line:#34323b; --line2:#26252c;
   --fg:#e9e6e1; --fg2:#a9a49c; --fg3:#7d7871;
-  --accent:#e2857f; --accent-bg:#2a1e1e;
-  --mark:#5d4a12;
+  --accent:#8ecfae; --accent-bg:#16271f;
+  --mark:#1f4a36;
   --add:#6cc394; --add-bg:#16271e;
   --del:#e79289; --del-bg:#2e1d1b;
   --chg:#dcb069; --chg-bg:#2b2418;
@@ -63,10 +63,11 @@ a{color:var(--accent)}
 #modes button{flex:1;padding:6px 4px 8px;border:0;background:none;color:var(--fg3);
   cursor:pointer;font-size:12.5px;border-bottom:2px solid transparent;margin-bottom:-1px}
 #modes button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:700}
+#modes button:hover{color:var(--fg2)}
 #searchwrap{padding:10px 12px;border-bottom:1px solid var(--line2);position:relative}
 #q{width:100%;padding:8px 28px 8px 11px;border:1px solid var(--line);border-radius:8px;
   background:var(--bg);outline:none}
-#q:focus{border-color:var(--accent)}
+#q:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
 /* ブラウザ標準のクリアボタン（丸い✕アイコン）を消す。自前の✕と二重になるため */
 #q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 #qclear{position:absolute;right:19px;top:50%;transform:translateY(-50%);border:0;background:none;
@@ -76,18 +77,18 @@ a{color:var(--accent)}
 .navit{display:flex;align-items:baseline;gap:.5em;width:100%;text-align:left;
   padding:5px 12px 5px 18px;border:0;background:none;cursor:pointer;color:var(--fg2);
   font-size:13px;border-left:2px solid transparent}
-.navit:hover{background:var(--line2);color:var(--fg)}
+.navit:hover{background:var(--accent-bg);color:var(--fg)}
 .navit.on{color:var(--fg);border-left-color:var(--fg2);background:var(--line2);font-weight:700}
 .navit .n{color:var(--fg3);font-variant-numeric:tabular-nums;flex:none;min-width:2.6em}
 .navit.on .n{color:var(--fg2)}
 .navit .t{flex:1;min-width:0}
 .badge{flex:none;font-size:10px;padding:0 5px;border-radius:9px;line-height:16px;font-weight:700}
-.b-chg{background:var(--chg-bg);color:var(--chg)}
+.b-chg{background:var(--accent-bg);color:var(--accent)}
 #tools{display:grid;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
 #tools .sub{display:flex;gap:6px}
 #tools button{flex:1;font-size:11.5px;padding:6px 4px;border:1px solid var(--line);
   background:var(--bg);border-radius:6px;cursor:pointer;color:var(--fg2);white-space:nowrap}
-#tools button:hover{color:var(--fg);border-color:var(--fg3)}
+#tools button:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
 #tools .pri{font-size:12.5px;padding:8px 4px;color:var(--fg);font-weight:700}
 #tools .pri:hover{border-color:var(--accent);color:var(--accent)}
 
@@ -154,7 +155,7 @@ tr>*:first-child{padding-right:1.1em}
 #results .cnt,#diffview .cnt{color:var(--fg3);font-size:12.5px;margin-bottom:14px}
 .hit{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line2);
   background:none;cursor:pointer;padding:11px 10px;border-radius:6px}
-.hit:hover{background:var(--line2)}
+.hit:hover{background:var(--accent-bg)}
 .hit .bc{font-size:11.5px;color:var(--fg3);margin-bottom:3px}
 .hit .sn{font-size:13.5px;line-height:1.75;color:var(--fg2)}
 
@@ -256,11 +257,15 @@ dialog .db{padding:16px 18px;display:grid;gap:11px}
 dialog label{display:grid;gap:4px;font-size:12px;color:var(--fg2)}
 dialog input,dialog textarea,dialog select{padding:7px 9px;border:1px solid var(--line);
   border-radius:7px;background:var(--bg);outline:none;width:100%;font-family:inherit}
-#pick{border:1px solid var(--line);border-radius:7px;background:var(--bg);padding:5px}
+dialog input:focus,dialog textarea:focus,dialog select:focus,#pick:focus-within{
+  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+#yearsel:focus,#diffbar select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+#pick{border:1px solid var(--line);border-radius:7px;background:var(--bg);padding:5px;
+  transition:box-shadow .12s}
 #pick input{border:0;background:none;padding:4px 5px}
 #chips{display:flex;flex-wrap:wrap;gap:5px}
 #chips:not(:empty){margin-bottom:4px}
-.chip2{display:inline-flex;align-items:center;gap:.4em;font-size:11.5px;background:var(--line2);
+.chip2{display:inline-flex;align-items:center;gap:.4em;font-size:11.5px;background:var(--accent-bg);
   border-radius:6px;padding:3px 5px 3px 8px;color:var(--fg2);max-width:100%}
 .chip2 b{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
 .chip2 button{border:0;background:none;color:var(--fg3);cursor:pointer;padding:0 2px;font-size:12px}
@@ -268,7 +273,7 @@ dialog input,dialog textarea,dialog select{padding:7px 9px;border:1px solid var(
 #picklist{max-height:190px;overflow-y:auto;border-top:1px solid var(--line2);margin-top:4px}
 #picklist button{display:block;width:100%;text-align:left;border:0;background:none;cursor:pointer;
   padding:6px 7px;border-radius:5px;font-size:12.5px;color:var(--fg2)}
-#picklist button:hover,#picklist button.sel{background:var(--line2);color:var(--fg)}
+#picklist button:hover,#picklist button.sel{background:var(--accent-bg);color:var(--fg)}
 #picklist .id{font-weight:700;color:var(--fg);margin-right:.6em;font-variant-numeric:tabular-nums}
 dialog textarea{min-height:78px;resize:vertical;line-height:1.7}
 dialog .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}

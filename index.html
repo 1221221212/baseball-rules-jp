@@ -312,7 +312,7 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
       <button data-mode="diff">改正差分</button>
     </div>
     <div id="searchwrap">
-      <input id="q" type="search" placeholder="全文検索（/ でフォーカス）" autocomplete="off" spellcheck="false">
+      <input id="q" type="search" placeholder="検索" autocomplete="off" spellcheck="false">
       <button id="qclear" aria-label="クリア">✕</button>
     </div>
     <nav id="nav"></nav>
@@ -1141,8 +1141,12 @@ $("#q").addEventListener("input", () => {
   clearTimeout(tmr); tmr = setTimeout(() => search($("#q").value), 110);
 });
 $("#qclear").onclick = () => { $("#q").value = ""; $("#qclear").style.display = "none"; search(""); $("#q").focus(); };
+/* 「/」で検索へ。入力中の欄からは奪わない */
+const inField = el => el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable);
 document.addEventListener("keydown", e => {
-  if (e.key === "/" && document.activeElement !== $("#q")) { e.preventDefault(); $("#q").focus(); $("#q").select(); }
+  if (e.key === "/" && !inField(document.activeElement)) {
+    e.preventDefault(); $("#q").focus(); $("#q").select();
+  }
   if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; search(""); $("#q").blur(); }
 });
 /* 既定はOSの設定に従う。ボタンで 自動 → ダーク → ライト と切り替えられる。

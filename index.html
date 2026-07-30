@@ -288,7 +288,7 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
     </div>
     <nav id="nav"></nav>
     <div id="tools">
-      <button id="btheme">◐ 表示</button>
+      <button id="btheme">◐ 自動</button>
       <button id="bexport">↓ 注釈</button>
       <button id="bimport">↑ 読込</button>
     </div>
@@ -1036,12 +1036,22 @@ document.addEventListener("keydown", e => {
   if (e.key === "/" && document.activeElement !== $("#q")) { e.preventDefault(); $("#q").focus(); $("#q").select(); }
   if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; search(""); $("#q").blur(); }
 });
-$("#btheme").onclick = () => {
-  const cur = document.documentElement.getAttribute("data-theme");
-  const next = cur === "dark" ? "light" : cur === "light" ? "" : "dark";
-  if (next) document.documentElement.setAttribute("data-theme", next);
+/* 既定はOSの設定に従う。ボタンで 自動 → ダーク → ライト と切り替えられる。
+   今どれなのかが分からないと困るので、ボタン自身に状態を出す */
+const THEME_LABEL = {"": "◐ 自動", dark: "● ダーク", light: "○ ライト"};
+function applyTheme(v) {
+  if (v) document.documentElement.setAttribute("data-theme", v);
   else document.documentElement.removeAttribute("data-theme");
-  localStorage.setItem("obr.theme", next);
+  localStorage.setItem("obr.theme", v);
+  const b = $("#btheme");
+  if (b) {
+    b.textContent = THEME_LABEL[v];
+    b.title = v ? "表示: " + THEME_LABEL[v].slice(2) : "表示: OSの設定に従う";
+  }
+}
+$("#btheme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme") || "";
+  applyTheme(cur === "" ? "dark" : cur === "dark" ? "light" : "");
 };
 $("#bexport").onclick = () => {
   const out = {version: 1, updated: new Date().toISOString().slice(0, 10), annotations: allAnn()};
@@ -1082,8 +1092,7 @@ async function computeChanged() {
 
 /* ===== 起動 ===== */
 (async function boot() {
-  const t = localStorage.getItem("obr.theme");
-  if (t) document.documentElement.setAttribute("data-theme", t);
+  applyTheme(localStorage.getItem("obr.theme") || "");
   try {
     S.manifest = await getJSON("manifest.json");
     try { fileAnn = (await getJSON(S.manifest.annotations)).annotations || []; } catch (e) { fileAnn = []; }

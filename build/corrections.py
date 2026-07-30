@@ -12,6 +12,7 @@
 （例: 4.03(e)の【注】は2026年の新設で、2025年版には無い）。
 """
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -25,21 +26,14 @@ DROP_NOTE = "> 【注】　アマチュア野球では、次の試合に出場�
 
 
 # 3.01【軟式注】のボール規格。元サイトは全角スペースで桁を合わせているだけなので、
-# プロポーショナルフォントでは桁が揃わない。表として持ち直す。
-BALL_TABLE_OLD = [
-    "> 直　径　　　　　　　　　重　量　　　　　　　　　反　発　　　20％圧縮荷重",
-    "> M号　71.5ミリ～72.5ミリ　136.2グラム～139.8グラム　70センチ～90センチ　32キログラム～40キログラム",
-    "> J号　68.5ミリ～69.5ミリ　127.2グラム～130.8グラム　60センチ～80センチ　27キログラム～37キログラム",
-    "> D号　64.0ミリ～65.0ミリ　105.0グラム～110.0グラム　65センチ～85センチ",
-    "> H号　71.5ミリ～72，５ミリ　141.2グラム～144.8グラム　70センチ～90センチ",
-]
-BALL_TABLE_NEW = [
-    "> | | 直径 | 重量 | 反発 | 20％圧縮荷重 |",
-    "> |---|---|---|---|---|",
-    "> | M号 | 71.5ミリ～72.5ミリ | 136.2グラム～139.8グラム | 70センチ～90センチ | 32キログラム～40キログラム |",
-    "> | J号 | 68.5ミリ～69.5ミリ | 127.2グラム～130.8グラム | 60センチ～80センチ | 27キログラム～37キログラム |",
-    "> | D号 | 64.0ミリ～65.0ミリ | 105.0グラム～110.0グラム | 65センチ～85センチ | |",
-    "> | H号 | 71.5ミリ～72.5ミリ | 141.2グラム～144.8グラム | 70センチ～90センチ | |",
+# プロポーショナルフォントでは揃わない。行の形から表に組み直す。
+# 数値は年度で変わる（2025年にH号の反発が改正された）ので、固定文字列では拾わない。
+BALL_ROWS = ("M号", "J号", "D号", "H号")
+
+# 元サイトが注記を一段深く置いている箇所。引用の深さだけを直す。
+# 条文の文字（ラベルを含む）には一切手を触れない
+NOTE_DEDENT = [
+    ("03-用具・ユニフォーム.md", "3.02(c)の原注", "【原注】　パインタール"),
 ]
 
 # 元サイトが項のラベルを大文字で書いてしまっている箇所。(a)(b)[C](d) のように
@@ -51,19 +45,11 @@ UPPER_LABEL = [
      "　　（C）　救援投手が少しの間投げただけで"),
 ]
 
-# 元サイトが注記を一段深く置いている箇所。引用の深さだけを直す。
-# 条文の文字（ラベルを含む）には一切手を触れない
-NOTE_DEDENT = [
-    ("03-用具・ユニフォーム.md", "3.02(c)の原注", "【原注】　パインタール"),
-]
-
 CORRECTIONS = [
     {
         "id": "3.01-ball-table",
         "file": "03-用具・ユニフォーム.md",
-        "kind": "block",
-        "old": BALL_TABLE_OLD,
-        "new": BALL_TABLE_NEW,
+        "kind": "balltable",
         "why": "全角スペースによる桁合わせを表に置き換える。あわせてH号の「72，５ミリ」を"
                "「72.5ミリ」に直す（元サイトの誤記。H号の寸法はM号と同一）",
     },
@@ -98,10 +84,44 @@ CORRECTIONS = [
 ]
 
 
-def dedent(c):
+def ball_table(c, years):
+    """全角スペースで桁を合わせたボール規格を、Markdownの表に組み直す"""
+    done = []
+    for y in years:
+        path = os.path.join(ROOT, "years", y, "text", c["file"])
+        if not os.path.exists(path):
+            continue
+        lines = open(path, encoding="utf-8").read().split("\n")
+        head = next((i for i, l in enumerate(lines)
+                     if re.match(r"^> 直[　 ]*径", l)), None)
+        if head is None:
+            continue
+        rows = []
+        i = head + 1
+        while i < len(lines) and lines[i].startswith("> ") and lines[i][2:4] in BALL_ROWS:
+            rows.append(lines[i][2:])
+            i += 1
+        if not rows:
+            continue
+        cols = [re.sub(r"[　 ]+", "", x)
+                for x in re.split(r"　{2,}", lines[head][2:].strip()) if x.strip()]
+        out = ["> | | " + " | ".join(cols) + " |",
+               "> |" + "---|" * (len(cols) + 1)]
+        for r in rows:
+            f = [x for x in re.split(r"　+", r.strip()) if x]
+            f = [x.replace("，", ".").replace("５", "5") if "，" in x else x for x in f]
+            f += [""] * (len(cols) + 1 - len(f))
+            out.append("> | " + " | ".join(f[:len(cols) + 1]) + " |")
+        lines[head:i] = out
+        open(path, "w", encoding="utf-8").write("\n".join(lines))
+        done.append(f"  [{y}] {c['id']}: 表に整形（{len(rows)}行）")
+    return done
+
+
+def dedent(c, years):
     """注記の引用の深さを一段戻す。条文の文字は変えない"""
     done = []
-    for y in sorted(d for d in os.listdir(os.path.join(ROOT, "years")) if d.isdigit()):
+    for y in years:
         for fn, where, needle in c["targets"]:
             path = os.path.join(ROOT, "years", y, "text", fn)
             if not os.path.exists(path):
@@ -122,10 +142,10 @@ def dedent(c):
     return done
 
 
-def relabel(c):
+def relabel(c, years):
     """項ラベルの大文字を小文字に直す"""
     done = []
-    for y in sorted(d for d in os.listdir(os.path.join(ROOT, "years")) if d.isdigit()):
+    for y in years:
         for fn, where, prefix in c["targets"]:
             path = os.path.join(ROOT, "years", y, "text", fn)
             if not os.path.exists(path):
@@ -177,14 +197,17 @@ def run(years=None):
     years = years or sorted(d for d in os.listdir(yd) if d.isdigit())
     for c in CORRECTIONS:
         if c["kind"] == "relabel":
-            for line in relabel(c):
+            for line in relabel(c, years):
+                print(line)
+        elif c["kind"] == "balltable":
+            for line in ball_table(c, years):
                 print(line)
         elif c["kind"] == "dedent":
-            for line in dedent(c):
+            for line in dedent(c, years):
                 print(line)
     for y in years:
         for c in CORRECTIONS:
-            if c["kind"] in ("relabel", "dedent"):
+            if c["kind"] in ("relabel", "dedent", "balltable"):
                 continue
             path = os.path.join(yd, y, "text", c["file"])
             if not os.path.exists(path):

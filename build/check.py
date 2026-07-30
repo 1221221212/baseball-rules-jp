@@ -122,6 +122,9 @@ def check_official(old_y, new_y):
     r = subprocess.run([sys.executable, os.path.join(HERE, "verify_official.py"), old_y, new_y],
                        capture_output=True, text=True)
     if r.returncode != 0:
+        # 対応表が無い年度ペア。黙って飛ばすと「検証済み」と誤解されるので明示する
+        print(f"[{old_y} → {new_y}]")
+        print("  公式照合         : 未実施（build/verify_official.py に対応表がありません）")
         return False
     print(f"[{old_y} → {new_y}]")
     for line in r.stdout.strip().splitlines():

@@ -2,6 +2,10 @@
  "title": "公認野球規則",
  "years": [
   {
+   "year": "2024",
+   "path": "years/2024/data/rules.json"
+  },
+  {
    "year": "2025",
    "path": "years/2025/data/rules.json"
   },

@@ -443,7 +443,9 @@ async function loadYear(y) {
    突き合わせは3段階。IDだけで見ると注記の採番繰り上げ（【注3】削除→【注4】が繰り上がる）
    を別物と誤判定するため、同じ親の中で本文が一致するものを最優先で結ぶ。 */
 const EDIT_MARKS = /《[新改削訂]》/g;
-const canon = n => ((n.title || "") + "\n" + (n.text || []).join("\n"))
+const tableText = n => n.table
+  ? "\n" + [n.table.head].concat(n.table.rows).map(r => r.join("\t")).join("\n") : "";
+const canon = n => ((n.title || "") + "\n" + (n.text || []).join("\n") + tableText(n))
   .replace(EDIT_MARKS, "").replace(/[\s\u3000]+/g, "");
 
 function longestCommon(a, b) {
@@ -506,7 +508,7 @@ function similarity(a, b) {
   return (2 * n) / (Math.min(a.length, 400) + Math.min(b.length, 400) || 1);
 }
 
-const bodyOf = n => ((n.title || "") + "\n" + (n.text || []).join("\n")).trim();
+const bodyOf = n => ((n.title || "") + "\n" + (n.text || []).join("\n") + tableText(n)).trim();
 
 async function computeDiff(fromY, toY) {
   const key = fromY + "-" + toY;
@@ -526,14 +528,29 @@ async function computeDiff(fromY, toY) {
   const ga = group(YA), gb = group(YB);
   const pairs = new Map(), doneA = new Set(), doneB = new Set();
 
-  for (const [p, la] of ga) {                       // 1. 同じ親・同じlevel・本文一致
-    const rest = (gb.get(p) || []).slice();
-    for (const na of la) {
-      const ca = canon(na);
-      const i = rest.findIndex(nb => nb.level === na.level && canon(nb) === ca);
-      if (i >= 0) { pairs.set(na.id, rest[i].id); doneA.add(na.id); doneB.add(rest[i].id); rest.splice(i, 1); }
+  // 親を対応づけたうえで、その配下を本文一致で結ぶ
+  const matchByContent = parentOf => {
+    let found = 0;
+    for (const [pa, la] of ga) {
+      const pb = parentOf(pa);
+      if (pb === undefined || !gb.has(pb)) continue;
+      const rest = gb.get(pb).filter(n => !doneB.has(n.id));
+      for (const na of la) {
+        if (doneA.has(na.id)) continue;
+        const ca = canon(na);
+        const i = rest.findIndex(nb => nb.level === na.level && canon(nb) === ca);
+        if (i >= 0) {
+          pairs.set(na.id, rest[i].id);
+          doneA.add(na.id); doneB.add(rest[i].id); rest.splice(i, 1); found++;
+        }
+      }
     }
-  }
+    return found;
+  };
+  matchByContent(pa => pa);                         // 1. 同じ親
+  // 1b. 親が採番替えされた場合。親の対応が決まるたびに配下も結べるので、
+  //     新しい対応が出なくなるまで繰り返す（定義が1つ増えて以降が繰り下がる等）
+  while (matchByContent(pa => pairs.get(pa))) {}
   for (const n of YA.nodes) {                       // 2. ID一致
     if (!doneA.has(n.id) && B.has(n.id) && !doneB.has(n.id)) {
       pairs.set(n.id, n.id); doneA.add(n.id); doneB.add(n.id);
@@ -1036,8 +1053,8 @@ function compareSection(sid, YA, YB, d, byNew, byOld, pairAB, pairBA) {
     out.push('<div class="row r-' + status + '">' + tag +
       (S.uni
         ? unifiedCell(a, b, ops, status)
-        : cellHTML(a, ops, "l", renamed ? a.id : "") +
-          cellHTML(b, ops, "r", renamed ? b.id : "")) + "</div>");
+        : cellHTML(a, ops, "l", renamed && a ? a.id : "") +
+          cellHTML(b, ops, "r", renamed && b ? b.id : "")) + "</div>");
   }
   if (!out.length) return "";
   const s = YB.byId.get(sid) || YA.byId.get(sid);

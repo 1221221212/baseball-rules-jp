@@ -47,13 +47,62 @@ def load(year):
 
 
 def body(n):
-    return ((n.get("title") or "") + "\n" + (n.get("text") or "")).strip()
+    """比較対象。表の中身も含める（3.01のボール規格のように表だけが変わることがある）"""
+    t = n.get("table")
+    tbl = ("\n" + "\n".join("\t".join(r) for r in [t["head"]] + t["rows"])) if t else ""
+    return ((n.get("title") or "") + "\n" + (n.get("text") or "") + tbl).strip()
 
 
 # ---------------------------------------------------------------------------
 # 公式改正文書。新しい年度を足したら、公式文書を読んでここに追記する
 # ---------------------------------------------------------------------------
 OFFICIAL = {
+    ("2024", "2025"): {
+        "source": "NPB「2025年度 野球規則改正」日本野球規則委員会",
+        "items": [
+            ("(1)", "2.01 グラスライン", ["2.01", "2.01-注", "2.01a", "2.01b", "2.01b-注"]),
+            ("(2)", "3.01【軟式注】H号の反発", ["3.01-軟式注"]),
+            ("(3)", "3.08 ヘルメット（(b)削除・繰り上げ）",
+             ["3.08b", "3.08b-注", "3.08c", "3.08d", "3.08e", "3.08-注"]),
+            ("(4)", "5.04(b) 打者の義務", ["5.04b2-原注", "5.04b4ix"]),
+            ("(5)", "5.09(a)(11)【原注】スリーフットレーン", ["5.09a11-原注", "5.09a11-注"]),
+            ("(6)", "5.10(g) 最小限必要とする打者への投球",
+             ["5.10g", "5.10g-注", "5.10g1", "5.10g1-注", "5.10g2"]),
+            ("(7)", "5.10(m) マウンドに行く回数", ["5.10m", "5.10m1"]),
+            ("(8)", "6.02(d) ペナルティ", ["6.02d", "6.02d1"]),
+            ("(9)", "7.01(a)(2) コールドゲームの宣告", ["7.01a2", "7.01a2-例外"]),
+            ("(10)", "7.01(c) 延期・中止", ["7.01c", "7.01c-注"]),
+            ("(11)", "7.01(c)(d)を統合し(d)へ",
+             ["7.01d", "7.01d1", "7.01d2", "7.01d3", "7.01d3-注", "7.01d3-注#2", "7.01c3"]),
+            ("(12)", "7.01(e)(f)削除", ["7.01e", "7.01f"]),
+            ("(13)", "7.01(g)を(e)へ",
+             ["7.01e", "7.01e1", "7.01e2", "7.01e3", "7.01e3-例外",
+              "7.01e3-規則説明", "7.01e3-規則説明-注", "7.01e4", "7.01e4-注",
+              "7.01g4", "7.01g4-注"]),
+            ("(14)", "7.02 サスペンデッドゲーム全面改正",
+             ["7.02a", "7.02a1", "7.02a2", "7.02a3", "7.02a4", "7.02a5", "7.02a6",
+              "7.02a6-付記", "7.02b", "7.02b1", "7.02b2", "7.02b3", "7.02b3A", "7.02b3B",
+              "7.02b4", "7.02b4A", "7.02b4B", "7.02b4C", "7.02c", "7.02d", "7.02d1",
+              "7.02d2", "7.02e"]),
+            ("(15)", "7.02(c)を(f)へ・継続試合",
+             ["7.02f", "7.02f-原注", "7.02-注", "7.02c-原注", "7.02c-注"]),
+            ("(16)", "9.01 リーグ事務局", ["9.01a", "9.01b", "9.01c"]),
+            ("(17)", "【9.22注】", ["9.22-注"]),
+            ("(18)", "定義14 コールドゲーム", ["y14"]),
+            ("(19)", "定義63 ポストポンドゲーム追加・以下繰り下げ",
+             ["y63", "y64", "y65", "y66", "y66-注", "y67", "y68", "y69", "y70", "y71",
+              "y72", "y73", "y73-注", "y74", "y74-注", "y75", "y76", "y77", "y78",
+              "y79", "y80", "y81", "y82", "y83"]),
+        ],
+        # 公式に記載がないが、調べたうえで説明がついたもの。黙って無視しないため理由を残す
+        "known": {
+            "2.01b-軟式注":
+                "係り先の変化は改正ではなく推定の限界。元サイトは【注】（(a)(b)に係る）と"
+                "【軟式注】（学童部の塁間距離＝2.01全体に係る）を同じブロック・同じ字下げで"
+                "(b)の直後に置いており、両者を区別する手がかりがない。"
+                "2025年に(a)(b)が新設された結果、【軟式注】の推定係り先が2.01→2.01(b)へ動いた",
+        },
+    },
     ("2025", "2026"): {
         "source": "NPB「2026年度 野球規則改正」日本野球規則委員会",
         "items": [
@@ -107,15 +156,32 @@ def diff(A, B):
     ga, gb = by_parent(A), by_parent(B)
     pairs, done_a, done_b = {}, set(), set()
 
-    for p in set(ga) & set(gb):                       # 1. 同じ親・同じlevel・本文一致
-        rest = list(gb[p])
-        for ka in ga[p]:
-            ca = canon(body(A[ka]))
-            for kb in rest:
-                if B[kb]["level"] == A[ka]["level"] and canon(body(B[kb])) == ca:
-                    pairs[ka] = kb
-                    done_a.add(ka); done_b.add(kb); rest.remove(kb)
-                    break
+    def match_by_content(parent_of):
+        """親を対応づけたうえで、その配下を本文一致で結ぶ"""
+        found = 0
+        for pa, la in ga.items():
+            pb = parent_of(pa)
+            if pb is None or pb not in gb:
+                continue
+            rest = [k for k in gb[pb] if k not in done_b]
+            for ka in la:
+                if ka in done_a:
+                    continue
+                ca = canon(body(A[ka]))
+                for kb in rest:
+                    if B[kb]["level"] == A[ka]["level"] and canon(body(B[kb])) == ca:
+                        pairs[ka] = kb
+                        done_a.add(ka); done_b.add(kb); rest.remove(kb)
+                        found += 1
+                        break
+        return found
+
+    # 1. 同じ親・同じlevel・本文一致
+    match_by_content(lambda pa: pa)
+    # 1b. 親が採番替えされた場合。親の対応が決まるたびに配下も結べるので、
+    #     新しい対応が出なくなるまで繰り返す（定義が1つ増えて以降が繰り下がる等）
+    while match_by_content(lambda pa: pairs.get(pa)):
+        pass
     for ka in A:                                      # 2. ID一致
         if ka not in done_a and ka in B and ka not in done_b:
             pairs[ka] = ka
@@ -213,8 +279,11 @@ def main():
             print(f"  ✗ 拾い漏れ {no} {title}  期待:{ids}")
         tagged |= hit
         items.append({"no": no, "title": title, "targets": ids})
+    known = o.get("known", {})
     extra = [e["id"] for e in entries
              if e["id"] not in tagged and (e.get("old_id") or e["id"]) not in tagged]
+    explained = [x for x in extra if x in known]
+    extra = [x for x in extra if x not in known]
 
     summary = {}
     for e in entries:
@@ -225,6 +294,9 @@ def main():
           f" / 拾い漏れ {len(miss)} / 公式外 {len(extra)}")
     for x in extra:
         print(f"    公式外: {x}")
+    for x in explained:
+        print(f"    公式外（説明済み）: {x}")
+        print(f"      {known[x]}")
 
 
 

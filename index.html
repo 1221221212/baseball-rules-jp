@@ -67,6 +67,8 @@ a{color:var(--accent)}
 #q{width:100%;padding:8px 28px 8px 11px;border:1px solid var(--line);border-radius:8px;
   background:var(--bg);outline:none}
 #q:focus{border-color:var(--accent)}
+/* ブラウザ標準のクリアボタン（丸い✕アイコン）を消す。自前の✕と二重になるため */
+#q::-webkit-search-cancel-button,#q::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
 #qclear{position:absolute;right:19px;top:50%;transform:translateY(-50%);border:0;background:none;
   color:var(--fg3);cursor:pointer;display:none;padding:4px;line-height:1}
 #nav{overflow-y:auto;flex:1;padding:6px 0 40px;min-height:0}

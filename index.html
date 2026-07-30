@@ -270,13 +270,20 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
   text-align:center;padding:24px;line-height:1.9}
 #msg code{background:var(--line2);padding:2px 7px;border-radius:5px;font-size:13px}
 #burger{display:none}
+#scrim{display:none}
 @media (max-width:820px){
   #app{grid-template-columns:1fr}
   #side{position:fixed;inset:0 auto 0 0;width:290px;z-index:20;transform:translateX(-100%);
     transition:transform .18s;box-shadow:var(--shadow)}
   body.nav #side{transform:none}
-  #burger{display:block;position:fixed;top:9px;left:9px;z-index:21;width:38px;height:38px;
-    border:1px solid var(--line);border-radius:9px;background:var(--panel);cursor:pointer}
+  #burger{display:block;position:fixed;top:9px;left:9px;z-index:22;width:38px;height:38px;
+    border:1px solid var(--line);border-radius:9px;background:var(--panel);cursor:pointer;
+    font-size:15px;line-height:1}
+  /* 開いている間はバーガーがドロワーの見出しに重なるので、その分だけ空ける */
+  body.nav #brand{padding-left:56px}
+  #scrim{display:block;position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.38);
+    opacity:0;pointer-events:none;transition:opacity .18s}
+  body.nav #scrim{opacity:1;pointer-events:auto}
   #doc,#results,#diffview{padding:58px 18px 45vh}
   .kids{padding-left:1em}
 }
@@ -289,6 +296,7 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 <body>
 <div id="msg">読み込み中…</div>
 <button id="burger" aria-label="目次">☰</button>
+<div id="scrim"></div>
 <div id="app" hidden>
   <aside id="side">
     <div id="brand">
@@ -1023,7 +1031,7 @@ function go(id) {
     setTimeout(() => el.classList.remove("flash"), 1500);
   } else $("#main").scrollTop = 0;
   highlightNav(y.sectionOf.get(n.id) || n.id);
-  document.body.classList.remove("nav");
+  toggleNav(false);
 }
 
 function setMode(m) {
@@ -1065,7 +1073,7 @@ document.addEventListener("click", async e => {
   if (g) { e.preventDefault(); go(g.dataset.go); return; }
   const s = e.target.closest(".navit");
   if (s) {
-    document.body.classList.remove("nav");
+    toggleNav(false);
     if (S.mode === "diff") {
       const el = document.getElementById("cmp-" + s.dataset.sec);
       if (el) el.scrollIntoView({block: "start"});
@@ -1113,7 +1121,16 @@ $("#yearsel").addEventListener("change", async e => {
   if (S.mode === "read") { renderAll(); if (keep) scrollToSection(keep); }
   else renderDiff();
 });
-$("#burger").onclick = () => document.body.classList.toggle("nav");
+/* ドロワーの開閉。開いている間はバーガーを閉じるボタンにし、
+   背後のスクリムをタップしても閉じられるようにする */
+function toggleNav(open) {
+  const on = open === undefined ? !document.body.classList.contains("nav") : open;
+  document.body.classList.toggle("nav", on);
+  $("#burger").textContent = on ? "✕" : "☰";
+  $("#burger").setAttribute("aria-label", on ? "目次を閉じる" : "目次");
+}
+$("#burger").onclick = () => toggleNav();
+$("#scrim").onclick = () => toggleNav(false);
 let tmr;
 $("#q").addEventListener("input", () => {
   $("#qclear").style.display = $("#q").value ? "block" : "none";

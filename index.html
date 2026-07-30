@@ -88,10 +88,17 @@ a{color:var(--accent)}
 
 #doc,#results,#diffview{max-width:920px;margin:0 auto;padding:32px 40px 45vh}
 .chaptag{color:var(--fg3);font-size:12px;letter-spacing:.09em;margin-bottom:6px}
-h2.rule{font-size:25px;margin:0 0 22px;padding-bottom:13px;border-bottom:2px solid var(--line);
+h1.chap{font-size:15px;font-weight:700;color:var(--fg3);letter-spacing:.1em;
+  margin:56px 0 4px;padding-bottom:7px;border-bottom:1px solid var(--line);
+  display:flex;gap:.7em;align-items:baseline;scroll-margin-top:12px}
+h1.chap:first-child{margin-top:0}
+h1.chap .num{color:var(--accent);font-variant-numeric:tabular-nums}
+.sect{scroll-margin-top:10px;padding-bottom:8px}
+.sect+.sect{margin-top:34px}
+h2.rule{font-size:23px;margin:22px 0 16px;padding-bottom:11px;border-bottom:1px solid var(--line2);
   display:flex;align-items:baseline;gap:.6em;flex-wrap:wrap}
 h2.rule .num{color:var(--accent);font-variant-numeric:tabular-nums}
-.node{scroll-margin-top:16px;border-radius:5px}
+.node{scroll-margin-top:76px;border-radius:5px}
 .node.item{margin-top:19px}
 .node.clause{margin-top:10px}
 .node.subclause{margin-top:7px}
@@ -169,6 +176,16 @@ tr>*:first-child{padding-right:1.1em}
 
 .cols{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);
   border-top:0;background:var(--panel)}
+.cols.uni{grid-template-columns:1fr}
+#diffbar .yrs.uni{display:flex;align-items:center;gap:4px}
+#diffbar .yrs.uni>div{border-right:0;padding:6px 8px}
+#diffbar .yrs.uni>div:last-child::before{content:"→";color:var(--fg3);margin-right:6px}
+.cell.u del{opacity:.85}
+.cell.u{border-bottom:1px solid var(--line2)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:0;background:var(--panel);color:var(--fg3);font-size:11.5px;
+  padding:4px 10px;cursor:pointer}
+.seg button.on{background:var(--accent-bg);color:var(--accent);font-weight:700}
 .cols:last-child{border-radius:0 0 10px 10px;overflow:hidden}
 .row{display:contents}
 .cell{padding:9px 14px;border-bottom:1px solid var(--line2);font-size:13.5px;line-height:1.9;
@@ -339,7 +356,9 @@ const S = {
   mode: "read",
   section: null,
   onlyChanged: true,      // 差分モードは既定で改正箇所のみ
+  uni: null,              // 差分の表示。null=画面幅で自動、true=インライン、false=並べて
 };
+const isNarrow = () => window.innerWidth < 820;
 const WHOLE = new Set(["y", "s"]);   // 章まるごと表示する（用語の定義・一般指示）
 
 /* ===== 読み込み ===== */
@@ -663,6 +682,28 @@ function tableHTML(t) {
 
 // indent=false のときは字下げしない。字下げは「一段上のノードに係る」という意味を
 // 持たせているので、条の直下（＝条そのものに係る）では付けない。
+/* 狭い画面では左右に並べず、1本の流れに削除と追加を織り込む（unified表示）。
+   GitHub なども狭い画面では split を無効にして unified にしている。
+   同じ文を2回読まされないぶん、縦に積むより読みやすい。 */
+function unifiedCell(a, b, ops, status) {
+  const n = b || a;
+  const lead = n.level === "note" ? '<span class="kd">' + esc(n.label || "") + "</span>"
+    : n.label ? '<span class="lb">' + esc(n.label) + "</span>"
+    : (n.level === "rule" || n.level === "chapter") ? '<span class="lb">' + esc(n.id) + "</span>" : "";
+  let body;
+  if (ops) {
+    body = ops.map(([t, v]) => t === "equal" ? esc(v)
+      : t === "delete" ? "<del>" + esc(v) + "</del>" : "<ins>" + esc(v) + "</ins>").join("");
+  } else if (status === "added") {
+    body = "<ins>" + esc(bodyOf(b)) + "</ins>";
+  } else if (status === "removed") {
+    body = "<del>" + esc(bodyOf(a)) + "</del>";
+  } else {
+    body = esc(bodyOf(n));
+  }
+  return '<div class="cell u">' + lead + body + "</div>";
+}
+
 function renderKids(n, indent = true) {
   const ks = Y().kids.get(n.id) || [];
   const tb = n.table;
@@ -684,26 +725,64 @@ function renderKids(n, indent = true) {
   return out + (tb ? tableHTML(tb) : "");
 }
 
-function renderSection(id) {
+/* 条文は全部つなげて1ページに出す。章・条の切れ目で区切り、
+   サイドバーは今どこを読んでいるかをスクロールに追従して示す。 */
+function renderAll() {
   const y = Y();
-  const s = y.byId.get(id);
-  if (!s) return;
-  S.section = id;
-  const ch = s.level === "chapter" ? s : y.byId.get(s.parent);
-  let h = '<div class="chaptag">' + esc(((ch.label ? ch.label + "　" : "") + (ch.title || ""))) + "</div>";
-  if (s.level === "chapter") {
-    h += '<h2 class="rule">' + esc(s.title || "") + tools(s) + "</h2>" +
-         '<div class="body">' + para(headText(s)) + "</div>" + annHTML(s.id) + renderKids(s, false);
-  } else {
-    h += '<h2 class="rule"><span class="num">' + esc(s.id) + "</span><span>" + esc(s.title || "") + "</span>" +
-         tools(s) + "</h2>" +
-         '<div class="body">' + para(headText(s)) + "</div>" + annHTML(s.id) + renderKids(s, false);
+  if (y.html == null) {
+    const parts = [];
+    for (const ch of y.chapters) {
+      parts.push('<h1 class="chap" id="ch-' + esc(ch.id) + '">' +
+        (ch.label ? '<span class="num">' + esc(ch.label) + "</span>" : "") +
+        "<span>" + esc(ch.title || "") + "</span></h1>");
+      const list = WHOLE.has(ch.id) ? [ch] : (y.kids.get(ch.id) || []);
+      for (const sec of list) parts.push(sectionHTML(sec, y));
+    }
+    y.html = parts.join("");
   }
-  $("#doc").innerHTML = h;
+  $("#doc").innerHTML = y.html;
   show("doc");
+  observeSections();
+}
+
+function sectionHTML(s, y) {
+  const head = s.level === "chapter"
+    ? '<h2 class="rule">' + esc(s.title || "") + tools(s) + "</h2>"
+    : '<h2 class="rule"><span class="num">' + esc(s.id) + "</span><span>" +
+      esc(s.title || "") + "</span>" + tools(s) + "</h2>";
+  return '<section class="sect" data-sec="' + esc(s.id) + '">' + head +
+    '<div class="body">' + para(headText(s)) + "</div>" +
+    annHTML(s.id) + renderKids(s, false) + "</section>";
+}
+
+/* サイドバーの現在位置。画面上端に一番近い条を選ぶ */
+let secObserver = null;
+function observeSections() {
+  if (secObserver) secObserver.disconnect();
+  const seen = new Map();
+  secObserver = new IntersectionObserver(entries => {
+    for (const e of entries) seen.set(e.target.dataset.sec, e);
+    let best = null;
+    for (const [, e] of seen) {
+      if (!e.isIntersecting) continue;
+      if (!best || e.boundingClientRect.top < best.boundingClientRect.top) best = e;
+    }
+    if (best) highlightNav(best.target.dataset.sec);
+  }, {root: $("#main"), rootMargin: "-8% 0px -80% 0px", threshold: 0});
+  document.querySelectorAll(".sect").forEach(el => secObserver.observe(el));
+}
+
+function highlightNav(id) {
+  if (S.section === id) return;
+  S.section = id;
   document.querySelectorAll(".navit").forEach(b => b.classList.toggle("on", b.dataset.sec === id));
   const on = document.querySelector(".navit.on");
   if (on) on.scrollIntoView({block: "nearest"});
+}
+
+function scrollToSection(id) {
+  const el = document.querySelector('.sect[data-sec="' + CSS.escape(id) + '"]');
+  if (el) { el.scrollIntoView({block: "start"}); highlightNav(id); }
 }
 
 function show(which) {
@@ -736,7 +815,7 @@ function buildNav() {
 /* ===== 検索 ===== */
 function search(qs) {
   const q = qs.trim();
-  if (!q) { renderSection(S.section || Y().sections[0].id); return; }
+  if (!q) { renderAll(); return; }
   const y = Y(), lower = q.toLowerCase(), hits = [];
   const direct = y.byId.get(q) || y.byCite.get(q);
   for (const n of y.nodes) {
@@ -812,6 +891,7 @@ async function renderDiff() {
   S.curDiff = cur;
   $("#diffview").innerHTML = '<p style="color:var(--fg3)">' + cur.from + " と " + cur.to + " を比較中…</p>";
   show("diffview");
+  if (S.uni === null) S.uni = isNarrow();
   const d = await computeDiff(cur.from, cur.to);
   const [YA, YB] = [await loadYear(cur.from), await loadYear(cur.to)];
 
@@ -830,6 +910,8 @@ async function renderDiff() {
     '<div class="opts">' +
       '<label><input type="checkbox" id="onlychg"' + (S.onlyChanged ? " checked" : "") +
         ">改正箇所のみ表示</label>" +
+      '<span class="seg"><button data-uni="0"' + (S.uni ? "" : ' class="on"') + ">並べて</button>" +
+      '<button data-uni="1"' + (S.uni ? ' class="on"' : "") + ">インライン</button></span>" +
       '<span class="stat">' +
         '<span class="s-add">追加 <b>' + n.added + "</b></span>" +
         '<span class="s-chg">変更 <b>' + n.changed + "</b></span>" +
@@ -837,7 +919,8 @@ async function renderDiff() {
       '<span class="s-rep">係り先 <b>' + (n.reparented || 0) + "</b></span>" +
         '<span class="s-del">削除 <b>' + n.removed + "</b></span>" +
       "</span></div>" +
-    '<div class="yrs"><div><select id="dfrom">' + yearOpts(cur.from) + "</select></div>" +
+    '<div class="yrs' + (S.uni ? " uni" : "") + '"><div><select id="dfrom">' + yearOpts(cur.from) +
+    "</select></div>" +
     '<div><select id="dto">' + yearOpts(cur.to) + "</select></div></div></div>";
 
   // 表示対象の条（改正のみ表示なら、変更のある条だけ）
@@ -910,8 +993,10 @@ function compareSection(sid, YA, YB, d, byNew, byOld, pairAB, pairBA) {
         : "") + "</div>";
     const renamed = !!(e && e.old_id);
     out.push('<div class="row r-' + status + '">' + tag +
-      cellHTML(a, ops, "l", renamed ? a.id : "") +
-      cellHTML(b, ops, "r", renamed ? b.id : "") + "</div>");
+      (S.uni
+        ? unifiedCell(a, b, ops, status)
+        : cellHTML(a, ops, "l", renamed ? a.id : "") +
+          cellHTML(b, ops, "r", renamed ? b.id : "")) + "</div>");
   }
   if (!out.length) return "";
   const s = YB.byId.get(sid) || YA.byId.get(sid);
@@ -919,7 +1004,7 @@ function compareSection(sid, YA, YB, d, byNew, byOld, pairAB, pairBA) {
     (s.level === "chapter" ? "" : '<span class="num">' + esc(sid) + "</span>") +
     "<span>" + esc(s.title || "") + "</span>" +
     (changed ? '<span class="cnt">改正 ' + changed + "</span>" : "") + "</div>" +
-    '<div class="cols">' + out.join("") + "</div>";
+    '<div class="cols' + (S.uni ? " uni" : "") + '">' + out.join("") + "</div>";
 }
 
 /* ===== 遷移 ===== */
@@ -929,14 +1014,15 @@ function go(id) {
   if (!n) return;
   setMode("read");
   $("#q").value = ""; $("#qclear").style.display = "none";
-  renderSection(y.sectionOf.get(n.id) || n.id);
   history.replaceState(null, "", "#" + n.id);
   const el = document.getElementById(n.id);
   if (el) {
-    el.scrollIntoView({block: "center"});
+    // 中央寄せだと画面上端が前の条に残り、サイドバーが1つ手前を指してしまう
+    el.scrollIntoView({block: "start"});
     el.classList.add("flash");
     setTimeout(() => el.classList.remove("flash"), 1500);
   } else $("#main").scrollTop = 0;
+  highlightNav(y.sectionOf.get(n.id) || n.id);
   document.body.classList.remove("nav");
 }
 
@@ -944,7 +1030,7 @@ function setMode(m) {
   S.mode = m;
   document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
   if (m === "diff") renderDiff();
-  else renderSection(S.section || Y().sections[0].id);
+  else renderAll();
 }
 
 /* ===== 注釈ダイアログ ===== */
@@ -970,7 +1056,7 @@ $("#dlg").addEventListener("close", () => {
     year: S.year, created: (editing && editing.created) || new Date().toISOString().slice(0, 10),
   };
   if (editing) localAnn[localAnn.indexOf(editing)] = rec; else localAnn.push(rec);
-  saveLocal(); buildNav(); renderSection(S.section);
+  saveLocal(); Y().html = null; buildNav(); renderAll();
 });
 
 /* ===== イベント ===== */
@@ -979,17 +1065,18 @@ document.addEventListener("click", async e => {
   if (g) { e.preventDefault(); go(g.dataset.go); return; }
   const s = e.target.closest(".navit");
   if (s) {
-    S.section = s.dataset.sec;
     document.body.classList.remove("nav");
     if (S.mode === "diff") {
-      const el = document.getElementById("cmp-" + S.section);
+      const el = document.getElementById("cmp-" + s.dataset.sec);
       if (el) el.scrollIntoView({block: "start"});
       else { S.onlyChanged = false; renderDiff(); }
-    } else renderSection(S.section);
+    } else { renderAll(); scrollToSection(s.dataset.sec); }
     return;
   }
   const m = e.target.closest("#modes button");
   if (m) { setMode(m.dataset.mode); return; }
+  const u = e.target.closest("[data-uni]");
+  if (u) { S.uni = u.dataset.uni === "1"; renderDiff(); return; }
   const add = e.target.closest("[data-add]");
   if (add) { openDlg(add.dataset.add); return; }
   const ed = e.target.closest("[data-edit]");
@@ -998,7 +1085,7 @@ document.addEventListener("click", async e => {
   if (del) {
     if (!confirm("この注釈を削除しますか？")) return;
     localAnn = localAnn.filter(a => a.id !== del.dataset.del);
-    saveLocal(); buildNav(); renderSection(S.section); return;
+    saveLocal(); Y().html = null; buildNav(); renderAll(); return;
   }
   const a = e.target.closest(".anchor");
   if (a) {
@@ -1022,8 +1109,9 @@ $("#yearsel").addEventListener("change", async e => {
   await loadYear(S.year);
   await computeChanged();
   buildNav();
-  const keep = S.section && Y().byId.has(S.section) ? S.section : Y().sections[0].id;
-  if (S.mode === "read") renderSection(keep); else renderDiff();
+  const keep = S.section;
+  if (S.mode === "read") { renderAll(); if (keep) scrollToSection(keep); }
+  else renderDiff();
 });
 $("#burger").onclick = () => document.body.classList.toggle("nav");
 let tmr;
@@ -1070,7 +1158,7 @@ $("#fileinput").onchange = () => {
       const known = new Set(allAnn().map(a => a.id));
       let k = 0;
       for (const a of inc) if (!known.has(a.id)) { localAnn.push(a); k++; }
-      saveLocal(); buildNav(); renderSection(S.section);
+      saveLocal(); Y().html = null; buildNav(); renderAll();
       alert(k + " 件を読み込みました。");
     } catch (err) { alert("読み込めませんでした: " + err.message); }
   };
@@ -1105,8 +1193,8 @@ async function computeChanged() {
     $("#msg").hidden = true;
     $("#app").hidden = false;
     const hash = decodeURIComponent(location.hash.slice(1));
+    renderAll();
     if (hash && (Y().byId.has(hash) || Y().byCite.has(hash))) go(hash);
-    else renderSection(Y().sections[0].id);
   } catch (e) {
     $("#msg").innerHTML = "<div><p><b>データを読み込めませんでした</b></p>" +
       "<p style='color:var(--fg3)'>" + esc(e.message) + "</p>" +

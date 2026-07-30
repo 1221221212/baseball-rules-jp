@@ -117,14 +117,6 @@ h2.rule .num{font-variant-numeric:tabular-nums}
 .kids{padding-left:1.8em}
 .body.cont{margin-top:.55em}
 .node.flash>.head,.node.flash>.nh{background:var(--mark);box-shadow:0 0 0 5px var(--mark);border-radius:3px}
-.anchor{opacity:0;color:var(--fg3);text-decoration:none;font-size:11px;flex:none;
-  font-variant-numeric:tabular-nums;align-self:center}
-.node:hover>.head .anchor,h2.rule:hover .anchor,.term:hover .anchor{opacity:1}
-.anchor:hover{color:var(--accent)}
-/* 条文の右にボタンの場所を常に空けておくと本文が早く折り返すので、
-   流れから外して右の余白に浮かせる */
-.body .anchor,.body .addbtn{margin-left:.5em;vertical-align:1px}
-@media (hover:none){ .anchor,.addbtn{opacity:.4} }
 .xref{color:var(--accent);text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
 mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 
@@ -255,10 +247,6 @@ tr>*:first-child{padding-right:1.1em}
 .amd .acts{margin-top:5px;display:flex;gap:7px}
 .amd .acts button{font-size:11px;padding:2px 8px;border:1px solid var(--line);
   background:var(--panel);border-radius:5px;cursor:pointer;color:var(--fg2)}
-.addbtn{opacity:0;border:1px dashed var(--line);background:none;color:var(--fg3);font-size:11px;
-  padding:0 6px;border-radius:5px;cursor:pointer;flex:none;align-self:center;line-height:17px}
-.node:hover>.head .addbtn,h2.rule:hover .addbtn,.term:hover .addbtn,.note:hover .addbtn{opacity:1}
-.addbtn:hover{color:var(--accent);border-color:var(--accent)}
 
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);
   padding:0;max-width:560px;width:calc(100% - 32px);box-shadow:var(--shadow)}
@@ -691,28 +679,24 @@ function annHTML(id) {
   }).join("");
 }
 
-function tools(n) {
-  return '<a class="anchor" href="#' + n.id + '" title="' + esc(n.cite || n.id) + '">' + esc(n.id) + "</a>";
-}
-
 function renderNode(n) {
   const chg = S.changedIn[S.year] && S.changedIn[S.year].has(n.id) ? " chg" : "";
   if (n.level === "note") {
     return '<div class="note node ' + noteCls(n.kind) + chg + '" id="' + esc(n.id) + '">' +
-      '<div class="nh">' + esc(n.label || "") + tools(n) + "</div>" +
+      '<div class="nh">' + esc(n.label || "") + "</div>" +
       '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + renderKids(n) + "</div>";
   }
   if (n.level === "term") {
     return '<div class="term node' + chg + '" id="' + esc(n.id) + '">' +
       '<h3><span class="n">' + esc(n.label || "") + "</span><span>" + esc(n.title || "") + "</span>" +
-      tools(n) + "</h3>" +
+      "</h3>" +
       '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + "</div>";
   }
   const head = '<div class="head">' +
     (n.label ? '<span class="lbl">' + esc(n.label) + "</span>" : "") +
     '<div class="body">' +
       (n.title ? '<span class="ttl">' + esc(n.title) + "</span>" + (n.text ? "　" : "") : "") +
-      para(headText(n), tools(n)) + "</div></div>";
+      para(headText(n)) + "</div></div>";
   return '<div class="node ' + n.level + chg + '" id="' + esc(n.id) + '">' + head +
     annHTML(n.id) + renderKids(n) + "</div>";
 }
@@ -799,9 +783,9 @@ function renderAll() {
 
 function sectionHTML(s, y) {
   const head = s.level === "chapter"
-    ? '<h2 class="rule">' + esc(s.title || "") + tools(s) + "</h2>"
+    ? '<h2 class="rule">' + esc(s.title || "") + "</h2>"
     : '<h2 class="rule"><span class="num">' + esc(s.id) + "</span><span>" +
-      esc(s.title || "") + "</span>" + tools(s) + "</h2>";
+      esc(s.title || "") + "</span></h2>";
   return '<section class="sect" data-sec="' + esc(s.id) + '">' + head +
     '<div class="body">' + para(headText(s)) + "</div>" +
     annHTML(s.id) + renderKids(s, false) + "</section>";
@@ -1191,13 +1175,6 @@ document.addEventListener("click", async e => {
     if (!confirm("この注釈を削除しますか？")) return;
     localAnn = localAnn.filter(a => a.id !== del.dataset.del);
     saveLocal(); Y().html = null; buildNav(); renderAll(); return;
-  }
-  const a = e.target.closest(".anchor");
-  if (a) {
-    e.preventDefault();
-    history.replaceState(null, "", a.getAttribute("href"));
-    if (navigator.clipboard) navigator.clipboard.writeText(location.href);
-    return;
   }
 });
 $("#diffview").addEventListener("change", e => {

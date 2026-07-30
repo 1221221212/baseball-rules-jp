@@ -83,10 +83,13 @@ a{color:var(--accent)}
 .navit .t{flex:1;min-width:0}
 .badge{flex:none;font-size:10px;padding:0 5px;border-radius:9px;line-height:16px;font-weight:700}
 .b-chg{background:var(--chg-bg);color:var(--chg)}
-#tools{display:flex;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
+#tools{display:grid;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
+#tools .sub{display:flex;gap:6px}
 #tools button{flex:1;font-size:11.5px;padding:6px 4px;border:1px solid var(--line);
   background:var(--bg);border-radius:6px;cursor:pointer;color:var(--fg2);white-space:nowrap}
 #tools button:hover{color:var(--fg);border-color:var(--fg3)}
+#tools .pri{font-size:12.5px;padding:8px 4px;color:var(--fg);font-weight:700}
+#tools .pri:hover{border-color:var(--accent);color:var(--accent)}
 
 #doc,#results,#diffview{max-width:920px;margin:0 auto;padding:32px 40px 45vh}
 .chaptag{color:var(--fg3);font-size:12px;letter-spacing:.09em;margin-bottom:6px}
@@ -265,6 +268,20 @@ dialog .db{padding:16px 18px;display:grid;gap:11px}
 dialog label{display:grid;gap:4px;font-size:12px;color:var(--fg2)}
 dialog input,dialog textarea,dialog select{padding:7px 9px;border:1px solid var(--line);
   border-radius:7px;background:var(--bg);outline:none;width:100%;font-family:inherit}
+#pick{border:1px solid var(--line);border-radius:7px;background:var(--bg);padding:5px}
+#pick input{border:0;background:none;padding:4px 5px}
+#chips{display:flex;flex-wrap:wrap;gap:5px}
+#chips:not(:empty){margin-bottom:4px}
+.chip2{display:inline-flex;align-items:center;gap:.4em;font-size:11.5px;background:var(--line2);
+  border-radius:6px;padding:3px 5px 3px 8px;color:var(--fg2);max-width:100%}
+.chip2 b{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
+.chip2 button{border:0;background:none;color:var(--fg3);cursor:pointer;padding:0 2px;font-size:12px}
+.chip2 button:hover{color:var(--del)}
+#picklist{max-height:190px;overflow-y:auto;border-top:1px solid var(--line2);margin-top:4px}
+#picklist button{display:block;width:100%;text-align:left;border:0;background:none;cursor:pointer;
+  padding:6px 7px;border-radius:5px;font-size:12.5px;color:var(--fg2)}
+#picklist button:hover,#picklist button.sel{background:var(--line2);color:var(--fg)}
+#picklist .id{font-weight:700;color:var(--fg);margin-right:.6em;font-variant-numeric:tabular-nums}
 dialog textarea{min-height:78px;resize:vertical;line-height:1.7}
 dialog .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
 dialog .df{padding:12px 18px;border-top:1px solid var(--line2);display:flex;gap:8px;justify-content:flex-end}
@@ -321,9 +338,12 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
     </div>
     <nav id="nav"></nav>
     <div id="tools">
-      <button id="btheme">◐ 自動</button>
-      <button id="bexport">↓ 注釈</button>
-      <button id="bimport">↑ 読込</button>
+      <button id="bnew" class="pri">＋ 注釈を作成</button>
+      <div class="sub">
+        <button id="btheme">◐ 自動</button>
+        <button id="bexport">↓ 書出</button>
+        <button id="bimport">↑ 読込</button>
+      </div>
     </div>
   </aside>
   <main id="main">
@@ -336,7 +356,14 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 <dialog id="dlg"><form method="dialog">
   <div class="dh2" id="dlgtitle">注釈を追加</div>
   <div class="db">
-    <label>対象<input id="f_target" readonly></label>
+    <label>対象の条文
+      <div id="pick">
+        <div id="chips"></div>
+        <input id="f_pick" placeholder="条番号や語句で検索して追加（5.02、ボーク など）"
+               autocomplete="off" spellcheck="false">
+        <div id="picklist" hidden></div>
+      </div>
+    </label>
     <div class="frow">
       <label>種別<select id="f_type">
         <option value="amendment">改正</option>
@@ -650,8 +677,14 @@ function annHTML(id) {
     const meta = [TYPE_JA[a.type] || a.type, a.effective ? a.effective + "年" : "", a.source || ""]
       .filter(Boolean).join(" ・ ");
     const mine = localAnn.includes(a);
+    const others = (a.target || []).filter(t => t !== id);
+    const also = others.length
+      ? '<span class="meta">他: ' + others.map(t =>
+          '<a class="xref" data-go="' + esc(t) + '">' + esc((Y().byId.get(t) || {}).cite || t) + "</a>"
+        ).join("、") + "</span>"
+      : "";
     return '<div class="amd"><div class="ah">' + esc(a.title || "（無題）") +
-      '<span class="meta">' + esc(meta) + "</span></div>" +
+      '<span class="meta">' + esc(meta) + "</span>" + also + "</div>" +
       (a.body ? '<div class="body">' + para(a.body.split("\n")) + "</div>" : "") +
       (mine ? '<div class="acts"><button data-edit="' + esc(a.id) + '">編集</button>' +
               '<button data-del="' + esc(a.id) + '">削除</button></div>' : "") + "</div>";
@@ -659,8 +692,7 @@ function annHTML(id) {
 }
 
 function tools(n) {
-  return '<a class="anchor" href="#' + n.id + '" title="' + esc(n.cite || n.id) + '">' + esc(n.id) + "</a>" +
-    '<button class="addbtn" data-add="' + esc(n.id) + '" title="注釈を追加">＋</button>';
+  return '<a class="anchor" href="#' + n.id + '" title="' + esc(n.cite || n.id) + '">' + esc(n.id) + "</a>";
 }
 
 function renderNode(n) {
@@ -1055,22 +1087,68 @@ function setMode(m) {
 
 /* ===== 注釈ダイアログ ===== */
 let editing = null;
-function openDlg(target, ex) {
+let dlgTargets = [];      // 注釈の対象。複数の条文にまたがることがある
+
+function chipHTML(id) {
+  const n = Y().byId.get(id);
+  const label = n ? (n.cite || n.id) : id;
+  let title = n ? (n.title || (n.text || []).join("")) : "";
+  if (title.length > 14) title = title.slice(0, 14) + "…";
+  return '<span class="chip2"><b>' + esc(label) + "</b>" + (title ? esc(title) : "") +
+    '<button type="button" data-drop="' + esc(id) + '">✕</button></span>';
+}
+function renderChips() {
+  $("#chips").innerHTML = dlgTargets.map(chipHTML).join("");
+}
+function addTarget(id) {
+  if (!dlgTargets.includes(id)) dlgTargets.push(id);
+  renderChips();
+  $("#f_pick").value = "";
+  $("#picklist").hidden = true;
+}
+function searchTargets(q) {
+  const list = $("#picklist");
+  const s = q.trim().toLowerCase();
+  if (!s) { list.hidden = true; return; }
+  const y = Y();
+  const hits = [];
+  for (const n of y.nodes) {
+    if (dlgTargets.includes(n.id)) continue;
+    const hay = (n.id + " " + (n.cite || "") + " " + (n.title || "") + " " +
+                 (n.text || []).join(" ")).toLowerCase();
+    if (hay.includes(s)) hits.push(n);
+    if (hits.length >= 12) break;
+  }
+  list.innerHTML = hits.length
+    ? hits.map(n => '<button type="button" data-pick="' + esc(n.id) + '">' +
+        '<span class="id">' + esc(n.cite || n.id) + "</span>" +
+        esc((n.title || (n.text || []).join("")).slice(0, 40)) + "</button>").join("")
+    : '<button type="button" disabled style="color:var(--fg3)">該当なし</button>';
+  list.hidden = false;
+}
+
+function openDlg(ex) {
   editing = ex || null;
-  $("#dlgtitle").textContent = ex ? "注釈を編集" : "注釈を追加";
-  $("#f_target").value = target || (ex && ex.target[0]) || "";
+  dlgTargets = ex ? (ex.target || []).slice() : (S.section ? [S.section] : []);
+  $("#dlgtitle").textContent = ex ? "注釈を編集" : "注釈を作成";
+  renderChips();
+  $("#f_pick").value = "";
+  $("#picklist").hidden = true;
   $("#f_type").value = (ex && ex.type) || "amendment";
   $("#f_effective").value = (ex && ex.effective) || "";
   $("#f_title").value = (ex && ex.title) || "";
   $("#f_body").value = (ex && ex.body) || "";
   $("#f_source").value = (ex && ex.source) || "";
   $("#dlg").showModal();
+  setTimeout(() => $("#f_title").focus(), 30);
 }
+
 $("#dlg").addEventListener("close", () => {
   if ($("#dlg").returnValue !== "save") return;
+  if (!dlgTargets.length) { alert("対象の条文を1つ以上選んでください。"); return; }
   const rec = {
     id: (editing && editing.id) || "loc-" + Date.now().toString(36),
-    target: [$("#f_target").value], type: $("#f_type").value,
+    target: dlgTargets.slice(), type: $("#f_type").value,
     effective: $("#f_effective").value.trim(), title: $("#f_title").value.trim(),
     body: $("#f_body").value.trim(), source: $("#f_source").value.trim(),
     year: S.year, created: (editing && editing.created) || new Date().toISOString().slice(0, 10),
@@ -1078,6 +1156,15 @@ $("#dlg").addEventListener("close", () => {
   if (editing) localAnn[localAnn.indexOf(editing)] = rec; else localAnn.push(rec);
   saveLocal(); Y().html = null; buildNav(); renderAll();
 });
+
+$("#f_pick").addEventListener("input", e => searchTargets(e.target.value));
+$("#pick").addEventListener("click", e => {
+  const pick = e.target.closest("[data-pick]");
+  if (pick) { addTarget(pick.dataset.pick); return; }
+  const drop = e.target.closest("[data-drop]");
+  if (drop) { dlgTargets = dlgTargets.filter(x => x !== drop.dataset.drop); renderChips(); }
+});
+$("#bnew").onclick = () => openDlg(null);
 
 /* ===== イベント ===== */
 document.addEventListener("click", async e => {
@@ -1097,10 +1184,8 @@ document.addEventListener("click", async e => {
   if (m) { setMode(m.dataset.mode); return; }
   const u = e.target.closest("[data-uni]");
   if (u) { S.uni = u.dataset.uni === "1"; renderDiff(); return; }
-  const add = e.target.closest("[data-add]");
-  if (add) { openDlg(add.dataset.add); return; }
   const ed = e.target.closest("[data-edit]");
-  if (ed) { openDlg(null, localAnn.find(a => a.id === ed.dataset.edit)); return; }
+  if (ed) { openDlg(localAnn.find(a => a.id === ed.dataset.edit)); return; }
   const del = e.target.closest("[data-del]");
   if (del) {
     if (!confirm("この注釈を削除しますか？")) return;

@@ -4,7 +4,7 @@
  "note": "条文IDに紐づく注釈。改正・解釈・事例・メモを貯めていく。ビューアの［↓ 注釈］で書き出したものをここに置き換える。",
  "schema": {
   "id": "一意なID",
-  "target": ["対象の条文ID。cite_id（5.10l-原注 等）でも可"],
+  "target": ["対象の条文ID（複数可）。cite_id（5.10l-原注 等）でも可"],
   "type": "amendment | interpretation | case | memo",
   "effective": "適用年",
   "title": "見出し",

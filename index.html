@@ -116,8 +116,12 @@ h2.rule .num{font-variant-numeric:tabular-nums}
 .node.flash>.head,.node.flash>.nh{background:var(--mark);box-shadow:0 0 0 5px var(--mark);border-radius:3px}
 .anchor{opacity:0;color:var(--fg3);text-decoration:none;font-size:11px;flex:none;
   font-variant-numeric:tabular-nums;align-self:center}
-.node:hover>.head .anchor,h2.rule:hover .anchor{opacity:1}
+.node:hover>.head .anchor,h2.rule:hover .anchor,.term:hover .anchor{opacity:1}
 .anchor:hover{color:var(--accent)}
+/* 条文の右にボタンの場所を常に空けておくと本文が早く折り返すので、
+   流れから外して右の余白に浮かせる */
+.body .anchor,.body .addbtn{margin-left:.5em;vertical-align:1px}
+@media (hover:none){ .anchor,.addbtn{opacity:.4} }
 .xref{color:var(--accent);text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
 mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 
@@ -629,9 +633,13 @@ function linkRefs(h) {
   });
 }
 
-function para(text) {
-  const arr = Array.isArray(text) ? text : (text ? [text] : []);
-  return arr.filter(Boolean).map(p => "<p>" + linkRefs(esc(p)) + "</p>").join("");
+/* tail は本文の最後の段落の中に差し込む。右側に場所を確保すると本文が
+   早く折り返し、上に浮かせるとホバー時に文字を覆ってしまうため */
+function para(text, tail) {
+  const arr = (Array.isArray(text) ? text : (text ? [text] : [])).filter(Boolean);
+  if (!arr.length) return tail ? "<p>" + tail + "</p>" : "";
+  return arr.map((p, i) => "<p>" + linkRefs(esc(p)) +
+    (tail && i === arr.length - 1 ? tail : "") + "</p>").join("");
 }
 const noteCls = k => "k-" + String(k || "").replace(/[0-9A-Z]+$/, "");
 
@@ -672,7 +680,7 @@ function renderNode(n) {
     (n.label ? '<span class="lbl">' + esc(n.label) + "</span>" : "") +
     '<div class="body">' +
       (n.title ? '<span class="ttl">' + esc(n.title) + "</span>" + (n.text ? "　" : "") : "") +
-      para(headText(n)) + "</div>" + tools(n) + "</div>";
+      para(headText(n), tools(n)) + "</div></div>";
   return '<div class="node ' + n.level + chg + '" id="' + esc(n.id) + '">' + head +
     annHTML(n.id) + renderKids(n) + "</div>";
 }

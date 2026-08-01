@@ -144,20 +144,20 @@ function renderNode(n) {
   const chg = S.changedIn[S.year] && S.changedIn[S.year].has(n.id) ? " chg" : "";
   if (n.level === "note") {
     return '<div class="note node ' + noteCls(n.kind) + chg + '" id="' + esc(n.id) + '">' +
-      '<div class="nh">' + esc(n.label || "") + "</div>" +
+      '<div class="nh">' + esc(n.label || "") + comHTML(n.id) + "</div>" +
       '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + renderKids(n) + "</div>";
   }
   if (n.level === "term") {
     return '<div class="term node' + chg + '" id="' + esc(n.id) + '">' +
       '<h3><span class="n">' + esc(n.label || "") + "</span><span>" + esc(n.title || "") + "</span>" +
-      "</h3>" +
+      comHTML(n.id) + "</h3>" +
       '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + "</div>";
   }
   const head = '<div class="head">' +
     (n.label ? '<span class="lbl">' + esc(n.label) + "</span>" : "") +
     '<div class="body">' +
       (n.title ? '<span class="ttl">' + esc(n.title) + "</span>" + (n.text ? "　" : "") : "") +
-      para(headText(n)) + "</div></div>";
+      para(headText(n)) + comHTML(n.id) + "</div></div>";
   return '<div class="node ' + n.level + chg + '" id="' + esc(n.id) + '">' + head +
     annHTML(n.id) + renderKids(n) + "</div>";
 }
@@ -244,9 +244,9 @@ function renderAll() {
 
 function sectionHTML(s, y) {
   const head = s.level === "chapter"
-    ? '<h2 class="rule">' + esc(s.title || "") + "</h2>"
+    ? '<h2 class="rule">' + esc(s.title || "") + comHTML(s.id) + "</h2>"
     : '<h2 class="rule"><span class="num">' + esc(s.id) + "</span><span>" +
-      esc(s.title || "") + "</span></h2>";
+      esc(s.title || "") + "</span>" + comHTML(s.id) + "</h2>";
   return '<section class="sect" data-sec="' + esc(s.id) + '">' + head +
     '<div class="body">' + para(headText(s)) + "</div>" +
     annHTML(s.id) + renderKids(s, false) + "</section>";
@@ -627,8 +627,9 @@ document.addEventListener("click", async e => {
     } else { renderAll(); scrollToSection(s.dataset.sec); }
     return;
   }
+  if (e.target.closest("[data-go-com]")) { location.href = "commentary.html"; return; }
   const m = e.target.closest("#modes button");
-  if (m) { setMode(m.dataset.mode); return; }
+  if (m && m.dataset.mode) { setMode(m.dataset.mode); return; }
   const u = e.target.closest("[data-uni]");
   if (u) { S.uni = u.dataset.uni === "1"; renderDiff(); return; }
   const ed = e.target.closest("[data-edit]");
@@ -653,6 +654,8 @@ $("#yearsel").addEventListener("change", async e => {
   S.year = e.target.value;
   await loadYear(S.year);
   await computeChanged();
+  await buildCommentaryIndex();
+  Y().html = null;
   buildNav();
   const keep = S.section;
   if (S.mode === "read") { renderAll(); if (keep) scrollToSection(keep); }
@@ -723,6 +726,41 @@ $("#fileinput").onchange = () => {
   r.readAsText(f); $("#fileinput").value = "";
 };
 
+/* ===== コンメンタールへのリンク =====
+   解説の参照は書いた年度のIDなので、表示中の年度へ読み替えてから紐づける。
+   必要な区間の差分だけ計算するので、全年度は読み込まない。 */
+let comIndex = new Map();      // 表示年度のID -> [{id,title}]
+
+async function buildCommentaryIndex() {
+  comIndex = new Map();
+  let com;
+  try { com = await getJSON("commentary.json"); } catch (e) { return; }
+  const ys = S.manifest.years.map(x => x.year);
+  const diffs = [];
+  for (let i = 0; i + 1 < ys.length; i++) {
+    const key = ys[i] + "-" + ys[i + 1];
+    if (!S.diffs[key]) S.diffs[key] = diffYears(await loadYear(ys[i]), await loadYear(ys[i + 1]));
+    diffs.push(S.diffs[key]);
+  }
+  const chain = makeChain(diffs);
+  for (const e of com.entries || []) {
+    if (!isValid(e.valid, S.year)) continue;
+    for (const r of e.refs || []) {
+      const id = resolveAcrossYears(r, S.year, ys, chain);
+      if (!id) continue;
+      if (!comIndex.has(id)) comIndex.set(id, []);
+      comIndex.get(id).push({id: e.id, title: e.title});
+    }
+  }
+}
+
+function comHTML(id) {
+  const list = comIndex.get(id);
+  if (!list) return "";
+  return list.map(c => '<a class="comlink" href="commentary.html#' + encodeURIComponent(c.id) +
+    '" title="' + esc(c.title) + '">解説</a>').join("");
+}
+
 /* ===== その年に改正のあった条項 ===== */
 async function computeChanged() {
   if (S.changedIn[S.year]) return;
@@ -747,6 +785,7 @@ async function computeChanged() {
       .map(x => '<option' + (x.year === S.year ? " selected" : "") + ">" + x.year + "</option>").join("");
     await loadYear(S.year);
     await computeChanged();
+    await buildCommentaryIndex();
     buildNav();
     $("#msg").hidden = true;
     $("#app").hidden = false;

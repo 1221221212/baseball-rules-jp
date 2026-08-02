@@ -137,12 +137,24 @@ def check_official(old_y, new_y):
             bad("公式照合が合っていません")
 
 
+def check_commentary():
+    """解説の根拠が条文に結び付いているか。詳細は build/commentary_check.py"""
+    import subprocess
+    print("[解説]")
+    r = subprocess.run([sys.executable, os.path.join(HERE, "commentary_check.py")],
+                       capture_output=True, text=True)
+    print(r.stdout.rstrip())
+    if r.returncode != 0:
+        bad("解説の参照に実在しない条文があります")
+
+
 def main():
     years = sorted(d for d in os.listdir(os.path.join(ROOT, "years")) if d.isdigit())
     for y in years:
         check_year(y)
     for a, b in zip(years, years[1:]):
         check_official(a, b)
+    check_commentary()
     print()
     print("すべて問題なし" if ok else "問題あり")
     sys.exit(0 if ok else 1)

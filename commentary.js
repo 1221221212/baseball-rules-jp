@@ -4,6 +4,7 @@
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
+const WRITTEN_YEAR = "2026";   // 解説を書いた年度。参照はここを起点に読み替える
 const S = {manifest: null, com: null, years: [], year: null, cache: {}, chain: null,
            q: "", tag: null, past: false};
 
@@ -88,9 +89,21 @@ function refHTML(r, cls) {
 
 const paras = t => (t || "").split("\n").filter(x => x.trim())
   .map(p => "<p>" + esc(p) + "</p>").join("");
+/* 要素ごとに根拠の身分を示す。条文に書いてあるのか、規則全体から導いたのか、
+   どこにも書いていない私見なのかを、読み手が区別できなければ解説の意味がない。
+   文字列だけの要素は「読めばそのまま分かる」ものとして印を付けない。 */
+const SRC = {定義: "src-def", 導出: "src-drv", 私見: "src-own"};
+
+function itemHTML(x) {
+  if (typeof x === "string") return "<li>" + esc(x) + "</li>";
+  const mark = x.s
+    ? '<span class="src ' + (SRC[x.s] || "") + '" data-at="' + esc(x.ref || "") + '">' +
+      esc(x.s) + "</span>" : "";
+  return "<li>" + mark + esc(x.t) + (x.note ? '<span class="sn">' + esc(x.note) + "</span>" : "") + "</li>";
+}
 const listHTML = (cls, label, items) => (items && items.length)
   ? '<div class="' + cls + '"><span class="lb">' + label + "</span><ol>" +
-    items.map(x => "<li>" + esc(x) + "</li>").join("") + "</ol></div>" : "";
+    items.map(itemHTML).join("") + "</ol></div>" : "";
 
 /* 規則は「要件を満たせば効果が生じる」という形をしている。
    条の中に要件と効果の組が複数あることも多いので、組ごとに区切って示す。 */
@@ -101,6 +114,22 @@ function ruleHTML(r, head) {
     (r.effect ? '<div class="eff"><span class="lb">効果</span><div>' + paras(r.effect) + "</div></div>" : "") +
     listHTML("exc", "例外", r.exceptions) +
     (r.note ? '<div class="rn">' + paras(r.note) + "</div>" : "") + "</section>";
+}
+
+/* 判断の順序を示す。条文は要件を並列に並べるが、実際の場面では
+   どれを先に確かめるかで到達する結論が変わる。分岐は網羅的でなければ意味がない。 */
+function treeHTML(t, top) {
+  if (!t) return "";
+  const kids = (t.b || []).map(n => {
+    const cond = '<span class="tc">' + esc(n.c || "") + "</span>";
+    const at = n.ref ? '<span class="src src-def" data-at="' + esc(n.ref) + '"></span>' : "";
+    const leaf = n.r ? '<span class="tr">' + esc(n.r) + "</span>" : "";
+    const sub = n.b ? treeHTML(n, false) : "";
+    return "<li>" + cond + leaf + at + (n.note ? '<span class="sn">' + esc(n.note) + "</span>" : "") + sub + "</li>";
+  }).join("");
+  const q = t.q ? '<div class="tq">' + esc(t.q) + "</div>" : "";
+  const body = q + "<ul>" + kids + "</ul>";
+  return top ? '<div class="tree"><span class="lb">判断</span><div>' + body + "</div></div>" : body;
 }
 
 function entryHTML(e, res) {
@@ -124,6 +153,7 @@ function entryHTML(e, res) {
     '<div class="refs">' + res.refs.filter(Boolean).map(r => refHTML(r, "ref")).join("") + "</div>" +
     (e.purpose ? '<div class="pur"><span class="lb">趣旨</span><div>' + paras(e.purpose) + "</div></div>" : "") +
     (e.structure ? '<div class="pur"><span class="lb">構成</span><div>' + paras(e.structure) + "</div></div>" : "") +
+    treeHTML(e.tree, true) +
     rules +
     (e.thesis ? '<div class="thesis"><span class="lb">総合</span><div>' + paras(e.thesis) + "</div></div>" : "") +
     listHTML("pts", "論点", e.points) +
@@ -197,6 +227,24 @@ async function render() {
   for (const e of list) parts.push(entryHTML(e, await resolveEntry(e)));
   if (!list.length) parts.push("<p>該当する解説がありません。</p>");
   $("#doc").innerHTML = parts.join("");
+  await linkSources();
+}
+
+/* 根拠に挙げた条文IDを、表示中の年度へ読み替えてリンクにする */
+async function linkSources() {
+  for (const el of $("#doc").querySelectorAll(".src[data-at]")) {
+    const ids = el.dataset.at.split(",").map(x => x.trim()).filter(Boolean);
+    if (!ids.length) continue;
+    const y = await loadYear(S.year);
+    const parts = [];
+    for (const id of ids) {
+      const r = await resolve1({year: WRITTEN_YEAR, id});
+      if (r.id && r.node) parts.push('<a href="index.html#' + encodeURIComponent(r.id) + '">' +
+        esc(r.node.cite || r.id) + "</a>");
+    }
+    if (parts.length) el.innerHTML = el.textContent + '<span class="sat">' + parts.join("・") + "</span>";
+    if (!el.textContent.trim()) el.classList.add("bare");
+  }
 }
 
 function buildNav() {

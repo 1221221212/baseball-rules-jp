@@ -72,6 +72,7 @@ a{color:var(--accent)}
   background:var(--accent-bg)}
 
 #doc,#results,#diffview{max-width:920px;margin:0 auto;padding:32px 40px 45vh}
+#legend+#doc{padding-top:14px}
 .chaptag{color:var(--fg3);font-size:12px;letter-spacing:.09em;margin-bottom:6px}
 h1.chap{font-size:15px;font-weight:700;color:var(--fg3);letter-spacing:.1em;
   margin:56px 0 4px;padding-bottom:7px;border-bottom:1px solid var(--line);
@@ -298,6 +299,34 @@ tr>*:first-child{padding-right:1.1em}
 .com .thesis>div{flex:1;min-width:0;line-height:1.95;text-align:justify}
 .com .thesis p{margin:0 0 .55em}
 .com .thesis .lb{color:var(--accent);border-color:var(--accent)}
+/* 根拠の身分。定義＝規則書に書いてある / 導出＝他の条文から導ける / 私見＝手がかりがない */
+.src{display:inline-flex;align-items:baseline;gap:.4em;font-size:10.5px;font-weight:700;
+  border-radius:4px;padding:0 6px;margin-right:.6em;line-height:1.7;white-space:nowrap;
+  vertical-align:.08em}
+.src-def{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent)}
+.src-drv{background:var(--chg-bg);color:var(--chg);border:1px solid var(--chg)}
+.src-own{background:transparent;color:var(--fg3);border:1px dashed var(--line)}
+.sat{font-weight:400;font-variant-numeric:tabular-nums}
+.sat a{text-decoration:none}
+.sat a:hover{text-decoration:underline}
+.sn{display:block;font-size:12.5px;color:var(--fg3);margin-top:.2em;line-height:1.8}
+#legend{max-width:920px;margin:0 auto;padding:0 40px;display:flex;gap:1.2em;flex-wrap:wrap;
+  align-items:center;font-size:11.5px;color:var(--fg3);line-height:2.2}
+/* 決定木。左の罫線で分岐を示し、葉に帰結を置く */
+.com .tree{display:flex;gap:.8em;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2)}
+.com .tree>div{flex:1;min-width:0}
+.tq{font-weight:700;font-size:13.5px;margin-bottom:7px}
+.com .tree ul{list-style:none;margin:0;padding:0 0 0 .2em}
+.com .tree ul ul{margin:5px 0 2px;padding-left:1.1em;border-left:1px solid var(--line)}
+.com .tree li{position:relative;padding:3px 0 3px 1.15em;line-height:1.8;font-size:13.5px}
+.com .tree li::before{content:"";position:absolute;left:0;top:1.05em;width:.75em;
+  border-top:1px solid var(--line)}
+.com .tree>div>ul>li::before{display:none}
+.com .tree>div>ul>li{padding-left:0}
+.tc{color:var(--fg2)}
+.tr{font-weight:700;color:var(--accent);margin-left:.6em}
+.tr::before{content:"→ ";font-weight:400;color:var(--fg3)}
+.src.bare{padding:0 5px;margin-left:.5em;margin-right:0}
 .com .pts{display:flex;gap:.8em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line2)}
 .com .pts ol{margin:0;padding-left:1.5em;flex:1;min-width:0}
 .com .pts li{margin-bottom:.35em;line-height:1.85;text-align:justify}
@@ -309,7 +338,7 @@ tr>*:first-child{padding-right:1.1em}
 .hv{font-size:11.5px;color:var(--fg3);background:var(--line2);border-radius:10px;padding:1px 9px}
 .hv b{font-weight:700;color:var(--fg2);margin-right:.5em;font-variant-numeric:tabular-nums}
 @media (max-width:620px){
-  .com .pur,.com .req,.com .exc,.com .eff,.com .pts,.com .hist,.com .thesis{display:block}
+  .com .pur,.com .req,.com .exc,.com .eff,.com .pts,.com .hist,.com .thesis,.com .tree{display:block}
   .com .lb{display:inline-block;margin:0 0 4px}
   .com .rn{margin-left:0}
 }

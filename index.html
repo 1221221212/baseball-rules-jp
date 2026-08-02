@@ -17,8 +17,7 @@
       <select id="yearsel" title="年度"></select>
     </div>
     <div id="modes">
-      <button data-mode="read" class="on">条文</button>
-      <button data-mode="diff">改正差分</button>
+      <button data-mode="read" class="on">規則</button>
       <button data-go-com>解説</button>
     </div>
     <div id="searchwrap">
@@ -27,12 +26,7 @@
     </div>
     <nav id="nav"></nav>
     <div id="tools">
-      <button id="bnew" class="pri">＋ 注釈を作成</button>
-      <div class="sub">
-        <button id="btheme">◐ 自動</button>
-        <button id="bexport">↓ 書出</button>
-        <button id="bimport">↑ 読込</button>
-      </div>
+      <button id="bdiff">⇄ 比較</button>
     </div>
   </aside>
   <main id="main">
@@ -41,37 +35,6 @@
     <div id="diffview" hidden></div>
   </main>
 </div>
-
-<dialog id="dlg"><form method="dialog">
-  <div class="dh2" id="dlgtitle">注釈を追加</div>
-  <div class="db">
-    <label>対象の条文
-      <div id="pick">
-        <div id="chips"></div>
-        <input id="f_pick" placeholder="条番号や語句で検索して追加（5.02、ボーク など）"
-               autocomplete="off" spellcheck="false">
-        <div id="picklist" hidden></div>
-      </div>
-    </label>
-    <div class="frow">
-      <label>種別<select id="f_type">
-        <option value="amendment">改正</option>
-        <option value="interpretation">解釈</option>
-        <option value="case">事例</option>
-        <option value="memo">メモ</option>
-      </select></label>
-      <label>適用年<input id="f_effective" placeholder="2027"></label>
-    </div>
-    <label>見出し<input id="f_title" placeholder="内野手の守備位置の制限"></label>
-    <label>本文<textarea id="f_body"></textarea></label>
-    <label>出典<input id="f_source" placeholder="2027年規則改正 / 審判員研修 など"></label>
-  </div>
-  <div class="df">
-    <button value="cancel">キャンセル</button>
-    <button value="save" class="pri">保存</button>
-  </div>
-</form></dialog>
-<input id="fileinput" type="file" accept="application/json" hidden>
 
 <script src="diff.js"></script>
 <script src="refs.js"></script>

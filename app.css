@@ -10,7 +10,7 @@
   --rep:#6b4a9a; --rep-bg:#f3effa;
   --shadow:0 1px 2px rgba(0,0,0,.05),0 10px 30px -14px rgba(0,0,0,.16);
 }
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+@media (prefers-color-scheme:dark){:root{
   --bg:#141715; --panel:#1b1f1c; --line:#333a35; --line2:#232926;
   --fg:#e6e9e7; --fg2:#a2a9a4; --fg3:#79807b;
   --accent:#8ecfae; --accent-bg:#16271f;
@@ -22,18 +22,6 @@
   --rep:#b79ae0; --rep-bg:#241d30;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.7);
 }}
-:root[data-theme=dark]{
-  --bg:#141715; --panel:#1b1f1c; --line:#333a35; --line2:#232926;
-  --fg:#e6e9e7; --fg2:#a2a9a4; --fg3:#79807b;
-  --accent:#8ecfae; --accent-bg:#16271f;
-  --mark:#1f4a36;
-  --add:#6cc394; --add-bg:#16271e;
-  --del:#e79289; --del-bg:#2e1d1b;
-  --chg:#dcb069; --chg-bg:#2b2418;
-  --ren:#8fbde4; --ren-bg:#1b2530;
-  --rep:#b79ae0; --rep-bg:#241d30;
-  --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.7);
-}
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 html,body{margin:0;height:100%}
@@ -77,13 +65,11 @@ a{color:var(--accent)}
 .navit .t{flex:1;min-width:0}
 .badge{flex:none;font-size:10px;padding:0 5px;border-radius:9px;line-height:16px;font-weight:700}
 .b-chg{background:var(--accent-bg);color:var(--accent)}
-#tools{display:grid;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
-#tools .sub{display:flex;gap:6px}
-#tools button{flex:1;font-size:11.5px;padding:6px 4px;border:1px solid var(--line);
+#tools{display:flex;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
+#tools button{flex:1;font-size:12px;padding:7px 4px;border:1px solid var(--line);
   background:var(--bg);border-radius:6px;cursor:pointer;color:var(--fg2);white-space:nowrap}
-#tools button:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-bg)}
-#tools .pri{font-size:12.5px;padding:8px 4px;color:var(--fg);font-weight:700}
-#tools .pri:hover{border-color:var(--accent);color:var(--accent)}
+#tools button:hover,#tools button.on{color:var(--accent);border-color:var(--accent);
+  background:var(--accent-bg)}
 
 #doc,#results,#diffview{max-width:920px;margin:0 auto;padding:32px 40px 45vh}
 .chaptag{color:var(--fg3);font-size:12px;letter-spacing:.09em;margin-bottom:6px}
@@ -127,12 +113,9 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .note[class*="k-"]{border-color:var(--nc);
   background:color-mix(in srgb, var(--nc) 8%, var(--bg))}
 .note[class*="k-"] .nh{color:var(--nc)}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .note[class*="k-"]{
-  background:color-mix(in srgb, var(--nc) 16%, var(--bg))}
-  :root:not([data-theme=light]) .note[class*="k-"] .nh{filter:brightness(1.55)}}
-:root[data-theme=dark] .note[class*="k-"]{
-  background:color-mix(in srgb, var(--nc) 16%, var(--bg))}
-:root[data-theme=dark] .note[class*="k-"] .nh{filter:brightness(1.55)}
+@media (prefers-color-scheme:dark){
+  .note[class*="k-"]{background:color-mix(in srgb, var(--nc) 16%, var(--bg))}
+  .note[class*="k-"] .nh{filter:brightness(1.55)}}
 
 /* 桁を揃えるためだけの表。罫線も背景も付けず、本文の一部に見えるようにする */
 .tw{overflow-x:auto;margin:.5em 0}
@@ -231,49 +214,6 @@ tr>*:first-child{padding-right:1.1em}
   #diffbar .stat{margin-left:0;width:100%;padding-left:0}
 }
 
-/* 注釈 */
-.amd{margin:9px 0;border:1px solid var(--accent);background:var(--accent-bg);
-  border-radius:8px;padding:9px 13px;font-size:13.5px;line-height:1.8}
-.amd .ah{font-weight:700;color:var(--accent);font-size:12px;margin-bottom:3px;
-  display:flex;gap:.6em;align-items:center;flex-wrap:wrap}
-.amd .meta{font-weight:400;color:var(--fg3);font-size:11px}
-.amd .acts{margin-top:5px;display:flex;gap:7px}
-.amd .acts button{font-size:11px;padding:2px 8px;border:1px solid var(--line);
-  background:var(--panel);border-radius:5px;cursor:pointer;color:var(--fg2)}
-
-dialog{border:1px solid var(--line);border-radius:12px;background:var(--panel);color:var(--fg);
-  padding:0;max-width:560px;width:calc(100% - 32px);box-shadow:var(--shadow)}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-dialog .dh2{padding:14px 18px;border-bottom:1px solid var(--line2);font-weight:700;font-size:14px}
-dialog .db{padding:16px 18px;display:grid;gap:11px}
-dialog label{display:grid;gap:4px;font-size:12px;color:var(--fg2)}
-dialog input,dialog textarea,dialog select{padding:7px 9px;border:1px solid var(--line);
-  border-radius:7px;background:var(--bg);outline:none;width:100%;font-family:inherit}
-dialog input:focus,dialog textarea:focus,dialog select:focus,#pick:focus-within{
-  border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
-#yearsel:focus,#diffbar select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
-#pick{border:1px solid var(--line);border-radius:7px;background:var(--bg);padding:5px;
-  transition:box-shadow .12s}
-#pick input{border:0;background:none;padding:4px 5px}
-#chips{display:flex;flex-wrap:wrap;gap:5px}
-#chips:not(:empty){margin-bottom:4px}
-.chip2{display:inline-flex;align-items:center;gap:.4em;font-size:11.5px;background:var(--accent-bg);
-  border-radius:6px;padding:3px 5px 3px 8px;color:var(--fg2);max-width:100%}
-.chip2 b{font-weight:700;color:var(--fg);font-variant-numeric:tabular-nums}
-.chip2 button{border:0;background:none;color:var(--fg3);cursor:pointer;padding:0 2px;font-size:12px}
-.chip2 button:hover{color:var(--del)}
-#picklist{max-height:190px;overflow-y:auto;border-top:1px solid var(--line2);margin-top:4px}
-#picklist button{display:block;width:100%;text-align:left;border:0;background:none;cursor:pointer;
-  padding:6px 7px;border-radius:5px;font-size:12.5px;color:var(--fg2)}
-#picklist button:hover,#picklist button.sel{background:var(--accent-bg);color:var(--fg)}
-#picklist .id{font-weight:700;color:var(--fg);margin-right:.6em;font-variant-numeric:tabular-nums}
-dialog textarea{min-height:78px;resize:vertical;line-height:1.7}
-dialog .frow{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-dialog .df{padding:12px 18px;border-top:1px solid var(--line2);display:flex;gap:8px;justify-content:flex-end}
-dialog .df button{padding:7px 15px;border:1px solid var(--line);background:var(--bg);
-  border-radius:7px;cursor:pointer}
-dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
-
 #msg{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;
   text-align:center;padding:24px;line-height:1.9}
 #msg code{background:var(--line2);padding:2px 7px;border-radius:5px;font-size:13px}
@@ -302,15 +242,17 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
   #doc{max-width:none;padding:0}body{font-size:10.5pt}
 }
 
-/* ===== コンメンタール ===== */
+/* ===== 解説 ===== */
 .com{border:1px solid var(--line);border-radius:10px;background:var(--panel);
   padding:16px 18px;margin:0 0 16px;scroll-margin-top:14px}
 .com h2{margin:0 0 6px;font-size:17px;display:flex;gap:.6em;align-items:baseline;flex-wrap:wrap}
 .com .meta{display:flex;gap:.5em;align-items:center;flex-wrap:wrap;
   font-size:11.5px;color:var(--fg3);margin-bottom:10px}
 .com .tag{background:var(--accent-bg);color:var(--accent);border-radius:10px;padding:1px 8px}
-.com .term{background:var(--line2);border-radius:10px;padding:1px 8px}
-.com .term.out{color:var(--del);background:var(--del-bg)}
+.com .valid{background:var(--line2);border-radius:10px;padding:1px 8px}
+.com .valid.out{color:var(--del);background:var(--del-bg)}
+.com.out{border-style:dashed}
+.navit.dim .t{color:var(--fg3)}
 .com .refs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .com .ref{display:inline-flex;align-items:baseline;gap:.45em;font-size:12.5px;
   border:1px solid var(--line);border-radius:7px;padding:4px 9px;background:var(--bg);
@@ -321,6 +263,50 @@ dialog .df .pri{background:var(--accent);color:#fff;border-color:var(--accent)}
 .com .ref.gone{opacity:.55;border-style:dashed;pointer-events:none}
 .com .body{line-height:1.95;text-align:justify}
 .com .body p{margin:0 0 .55em}
+
+/* 規則は要件と効果でできている。組ごとに区切り、要件は番号を振って数えられるようにする */
+.com .lb{flex:none;font-size:10.5px;font-weight:700;letter-spacing:.08em;color:var(--fg3);
+  border:1px solid var(--line);border-radius:4px;padding:1px 6px;line-height:1.5;
+  align-self:flex-start;margin-top:.25em}
+.com .pur{display:flex;gap:.8em;margin:0 0 4px}
+.com .pur>div{flex:1;min-width:0;line-height:1.95;text-align:justify}
+.com .pur p{margin:0 0 .5em}
+.com .rl{margin-top:14px;padding-top:13px;border-top:1px solid var(--line2)}
+.com .rh{font-weight:700;font-size:14px;margin-bottom:8px;display:flex;gap:.6em;
+  align-items:baseline;flex-wrap:wrap}
+.com .rh .at{font-weight:400}
+.com .at{display:inline-flex;align-items:baseline;gap:.4em;font-size:11.5px;
+  border:1px solid var(--line);border-radius:5px;padding:1px 7px;text-decoration:none;color:var(--fg2)}
+.com .at:hover{border-color:var(--accent);background:var(--accent-bg)}
+.com .at b{color:var(--accent);font-variant-numeric:tabular-nums}
+.com .at .t{color:var(--fg3);font-size:11px}
+.com .at.gone{opacity:.55;border-style:dashed;pointer-events:none}
+.com .req,.com .exc,.com .eff{display:flex;gap:.8em;margin:0 0 7px}
+.com .req ol,.com .exc ol{margin:0;padding-left:1.5em;flex:1;min-width:0}
+.com .req li,.com .exc li{margin-bottom:.3em;line-height:1.85;text-align:justify}
+.com .exc ol{list-style:none;padding-left:0}
+.com .exc li{position:relative;padding-left:1.3em}
+.com .exc li::before{content:"⊘";position:absolute;left:0;color:var(--del);font-size:11px}
+.com .eff>div{flex:1;min-width:0;line-height:1.9;text-align:justify}
+.com .eff p{margin:0 0 .4em}
+.com .eff .lb{color:var(--accent);border-color:var(--accent)}
+.com .rn{margin:6px 0 0 4.4em;font-size:13px;color:var(--fg2);line-height:1.85;text-align:justify}
+.com .rn p{margin:0 0 .4em}
+.com .pts{display:flex;gap:.8em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line2)}
+.com .pts ol{margin:0;padding-left:1.5em;flex:1;min-width:0}
+.com .pts li{margin-bottom:.35em;line-height:1.85;text-align:justify}
+.com .rel{display:flex;gap:.55em;flex-wrap:wrap;align-items:center;
+  margin-top:13px;padding-top:11px;border-top:1px solid var(--line2)}
+/* 沿革は差分から出す。手で書いた履歴と条文が食い違うことがない */
+.com .hist{display:flex;gap:.8em;margin-top:9px;align-items:flex-start}
+.com .hist>div{display:flex;gap:.5em;flex-wrap:wrap;flex:1;min-width:0;margin-top:.15em}
+.hv{font-size:11.5px;color:var(--fg3);background:var(--line2);border-radius:10px;padding:1px 9px}
+.hv b{font-weight:700;color:var(--fg2);margin-right:.5em;font-variant-numeric:tabular-nums}
+@media (max-width:620px){
+  .com .pur,.com .req,.com .exc,.com .eff,.com .pts,.com .hist{display:block}
+  .com .lb{display:inline-block;margin:0 0 4px}
+  .com .rn{margin-left:0}
+}
 .com .src{font-size:11.5px;color:var(--fg3);margin-top:10px}
 #doc .lead{color:var(--fg3);font-size:12.5px;margin-bottom:16px}
 .navit .tagline{font-size:11px;color:var(--fg3)}

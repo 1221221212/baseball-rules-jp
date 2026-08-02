@@ -1,10 +1,11 @@
 "use strict";
-/* コンメンタール野球規則。
+/* 条文の解説。
    条文とは独立した読み物だが、参照は年度をまたいで条文に解決される（refs.js）。 */
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
-const S = {manifest: null, com: null, years: [], year: null, cache: {}, chain: null, q: "", tag: null};
+const S = {manifest: null, com: null, years: [], year: null, cache: {}, chain: null,
+           q: "", tag: null, past: false};
 
 async function getJSON(p) {
   const r = await fetch(p, {cache: "no-cache"});
@@ -49,14 +50,16 @@ async function ensureChain(fromY, toY) {
   S.chain = makeChain(all);
 }
 
-async function resolveAll(entry) {
+async function resolve1(r) {
+  await ensureChain(r.year, S.year);
+  const id = resolveAcrossYears(r, S.year, S.years, S.chain);
+  const n = id && (await loadYear(S.year)).byId.get(id);
+  return {ref: r, id, node: n || null};
+}
+/* 添字を保ちたいので、参照が無い要素は null のまま残す */
+async function resolveAll(list) {
   const out = [];
-  for (const r of entry.refs) {
-    await ensureChain(r.year, S.year);
-    const id = resolveAcrossYears(r, S.year, S.years, S.chain);
-    const n = id && (await loadYear(S.year)).byId.get(id);
-    out.push({ref: r, id, node: n || null});
-  }
+  for (const r of (list || [])) out.push(r ? await resolve1(r) : null);
   return out;
 }
 
@@ -66,60 +69,149 @@ const TERM = v => {
   return (v.from || "") + "〜" + (v.to || "現行");
 };
 
-function entryHTML(e, refs) {
-  const outOfTerm = !isValid(e.valid, S.year);
+/* 表示中の年度に効いているか。効いていないものは既定で隠すが、
+   廃止された規則の解説も記録なので、辿れなくはしない */
+const inTerm = e => isValid(e.valid, S.year);
+const shown = e => S.past || inTerm(e);
+
+function refHTML(r, cls) {
+  const {ref, id, node} = r;
+  if (!id || !node) {
+    return '<span class="' + cls + ' gone"><b>' + esc(ref.id) + "</b>" +
+      '<span class="t">' + esc(ref.year) + "年時点・" + esc(S.year) + "年には無い</span></span>";
+  }
+  const moved = id !== ref.id ? '<span class="t">' + esc(ref.year) + "年は " + esc(ref.id) + "</span>" : "";
+  return '<a class="' + cls + '" href="index.html#' + encodeURIComponent(id) + '">' +
+    "<b>" + esc(node.cite || id) + "</b>" +
+    '<span class="t">' + esc(node.title || "") + "</span>" + moved + "</a>";
+}
+
+const paras = t => (t || "").split("\n").filter(x => x.trim())
+  .map(p => "<p>" + esc(p) + "</p>").join("");
+const listHTML = (cls, label, items) => (items && items.length)
+  ? '<div class="' + cls + '"><span class="lb">' + label + "</span><ol>" +
+    items.map(x => "<li>" + esc(x) + "</li>").join("") + "</ol></div>" : "";
+
+/* 規則は「要件を満たせば効果が生じる」という形をしている。
+   条の中に要件と効果の組が複数あることも多いので、組ごとに区切って示す。 */
+function ruleHTML(r, head) {
+  return '<section class="rl">' +
+    '<div class="rh">' + esc(r.head || "") + (head ? '<span class="at">' + head + "</span>" : "") + "</div>" +
+    listHTML("req", "要件", r.elements) +
+    (r.effect ? '<div class="eff"><span class="lb">効果</span><div>' + paras(r.effect) + "</div></div>" : "") +
+    listHTML("exc", "例外", r.exceptions) +
+    (r.note ? '<div class="rn">' + paras(r.note) + "</div>" : "") + "</section>";
+}
+
+function entryHTML(e, res) {
+  const outOfTerm = !inTerm(e);
   const term = TERM(e.valid);
   const meta = [
-    term ? '<span class="term' + (outOfTerm ? " out" : "") + '">' + esc(term) +
+    term ? '<span class="valid' + (outOfTerm ? " out" : "") + '">' + esc(term) +
       (outOfTerm ? "・" + esc(S.year) + "年は期間外" : "") + "</span>" : "",
     ...(e.tags || []).map(t => '<span class="tag">' + esc(t) + "</span>"),
   ].filter(Boolean).join("");
 
-  const refHTML = refs.map(({ref, id, node}) => {
-    if (!id || !node) {
-      return '<span class="ref gone"><b>' + esc(ref.id) + "</b>" +
-        '<span class="t">' + esc(ref.year) + "年時点・" + esc(S.year) + "年には無い</span></span>";
-    }
-    const moved = id !== ref.id ? '<span class="t">' + esc(ref.year) + "年は " + esc(ref.id) + "</span>" : "";
-    return '<a class="ref" href="index.html#' + encodeURIComponent(id) + '">' +
-      "<b>" + esc(node.cite || id) + "</b>" +
-      '<span class="t">' + esc(node.title || "") + "</span>" + moved + "</a>";
-  }).join("");
+  const rules = (e.rules || []).map((r, i) => ruleHTML(r, res.rules[i] ? refHTML(res.rules[i], "at") : "")).join("");
+  const rel = res.related.filter(Boolean);
+  const related = rel.length
+    ? '<div class="rel"><span class="lb">関連</span>' +
+      rel.map(r => refHTML(r, "ref")).join("") + "</div>" : "";
 
-  const body = (e.body || "").split("\n").filter(x => x.trim())
-    .map(p => "<p>" + esc(p) + "</p>").join("");
-
-  return '<article class="com" id="' + esc(e.id) + '">' +
+  return '<article class="com' + (outOfTerm ? " out" : "") + '" id="' + esc(e.id) + '">' +
     "<h2>" + esc(e.title) + "</h2>" +
     (meta ? '<div class="meta">' + meta + "</div>" : "") +
-    '<div class="refs">' + refHTML + "</div>" +
-    '<div class="body">' + body + "</div>" + "</article>";
+    '<div class="refs">' + res.refs.filter(Boolean).map(r => refHTML(r, "ref")).join("") + "</div>" +
+    (e.purpose ? '<div class="pur"><span class="lb">趣旨</span><div>' + paras(e.purpose) + "</div></div>" : "") +
+    (e.structure ? '<div class="pur"><span class="lb">構成</span><div>' + paras(e.structure) + "</div></div>" : "") +
+    rules +
+    listHTML("pts", "論点", e.points) +
+    related + historyHTML(res.history) +
+    (e.body ? '<div class="body">' + paras(e.body) + "</div>" : "") + "</article>";
+}
+
+/* 沿革は差分から導く。書き手が改正履歴を書き写す必要はないし、
+   書き写せば条文と食い違う余地が生まれる。 */
+const KIND_JA = {text: "文言", number: "採番", parent: "係り先", added: "追加", removed: "削除"};
+
+async function historyOf(e) {
+  const base = (e.refs || [])[0];
+  const ys = S.years;
+  if (!base || ys.length < 2) return [];
+  const out = [];
+  for (let k = 0; k + 1 < ys.length; k++) {
+    await ensureChain(ys[k], ys[k + 1]);
+    const d = (S.diffCache || {})[ys[k] + "-" + ys[k + 1]];
+    if (!d) continue;
+    const oi = resolveAcrossYears(base, ys[k], ys, S.chain);
+    const ni = resolveAcrossYears(base, ys[k + 1], ys, S.chain);
+    // removed は旧年度のID、added は新年度のIDしか持たない
+    const under = (id, pre) => !!(id && pre && (id === pre || id.startsWith(pre)));
+    const hits = d.entries.filter(x =>
+      under(x.status === "removed" ? null : x.id, ni) ||
+      under(x.status === "added" ? null : (x.old_id || x.id), oi));
+    if (!hits.length) continue;
+    const c = {};
+    for (const x of hits) {
+      for (const k2 of (x.changes.length ? x.changes : [x.status])) c[k2] = (c[k2] || 0) + 1;
+    }
+    out.push({from: ys[k], to: ys[k + 1], counts: c});
+  }
+  return out;
+}
+
+function historyHTML(h) {
+  if (!h.length) return "";
+  const rows = h.map(x => '<span class="hv"><b>' + esc(x.from) + "→" + esc(x.to) + "</b>" +
+    Object.entries(x.counts).map(([k, n]) => (KIND_JA[k] || k) + n).join("・") + "</span>").join("");
+  return '<div class="hist"><span class="lb">沿革</span><div>' + rows + "</div></div>";
+}
+
+/* 解説1件の参照をまとめて解決する。条そのもの・各要件が指す項・関連条文 */
+async function resolveEntry(e) {
+  return {
+    refs: await resolveAll(e.refs),
+    rules: await resolveAll((e.rules || []).map(r => r.ref)),
+    related: await resolveAll(e.related),
+    history: await historyOf(e),
+  };
 }
 
 function match(e) {
   const q = S.q.trim().toLowerCase();
+  if (!shown(e)) return false;
   if (S.tag && !(e.tags || []).includes(S.tag)) return false;
   if (!q) return true;
-  return (e.title + " " + (e.body || "") + " " + (e.tags || []).join(" ") +
-          " " + e.refs.map(r => r.id).join(" ")).toLowerCase().includes(q);
+  const hay = [e.title, e.purpose, e.body, (e.tags || []).join(" "),
+    e.refs.map(r => r.id).join(" "),
+    (e.rules || []).map(r => [r.head, (r.elements || []).join(" "), r.effect,
+      (r.exceptions || []).join(" "), r.note, r.ref && r.ref.id].join(" ")).join(" "),
+  ].join(" ").toLowerCase();
+  return hay.includes(q);
 }
 
 async function render() {
   const list = S.com.entries.filter(match);
-  const parts = ['<div class="lead">条文への参照は書いた年度のまま保存され、' +
-    '表示中の年度（' + esc(S.year) + '）に読み替えて示します。採番が変わっても書き直す必要はありません。</div>'];
-  for (const e of list) parts.push(entryHTML(e, await resolveAll(e)));
+  const parts = [];
+  for (const e of list) parts.push(entryHTML(e, await resolveEntry(e)));
   if (!list.length) parts.push("<p>該当する解説がありません。</p>");
   $("#doc").innerHTML = parts.join("");
 }
 
 function buildNav() {
+  const list = S.com.entries.filter(shown);
+  const past = S.com.entries.filter(e => !inTerm(e)).length;
   const tags = new Map();
-  for (const e of S.com.entries) for (const t of (e.tags || [])) tags.set(t, (tags.get(t) || 0) + 1);
+  for (const e of list) for (const t of (e.tags || [])) tags.set(t, (tags.get(t) || 0) + 1);
   let h = '<div class="navch">解説</div>';
-  for (const e of S.com.entries) {
-    h += '<button class="navit" data-jump="' + esc(e.id) + '">' +
+  for (const e of list) {
+    h += '<button class="navit' + (inTerm(e) ? "" : " dim") + '" data-jump="' + esc(e.id) + '">' +
       '<span class="t">' + esc(e.title) + "</span></button>";
+  }
+  if (past) {
+    h += '<button class="navit' + (S.past ? " on" : "") + '" data-past>' +
+      '<span class="t">' + (S.past ? esc(S.year) + "年のものだけ" : "期間外も表示") +
+      '</span><span class="badge b-chg">' + past + "</span></button>";
   }
   h += '<div class="navch">分類</div>';
   h += '<button class="navit' + (S.tag ? "" : " on") + '" data-tag=""><span class="t">すべて</span></button>';
@@ -137,11 +229,15 @@ document.addEventListener("click", async e => {
     document.getElementById(j.dataset.jump)?.scrollIntoView({block: "start"});
     document.body.classList.remove("nav"); return;
   }
+  if (e.target.closest("[data-past]")) { S.past = !S.past; buildNav(); await render(); return; }
   const t = e.target.closest("[data-tag]");
   if (t) { S.tag = t.dataset.tag || null; buildNav(); await render(); return; }
   if (e.target.closest("[data-go-rules]")) { location.href = "index.html"; return; }
 });
-$("#yearsel").addEventListener("change", async e => { S.year = e.target.value; await render(); });
+/* 年度が変われば、どれが効いているかも変わる。目次から作り直す */
+$("#yearsel").addEventListener("change", async e => {
+  S.year = e.target.value; buildNav(); await render();
+});
 let tmr;
 $("#q").addEventListener("input", () => {
   $("#qclear").style.display = $("#q").value ? "block" : "none";
@@ -154,31 +250,12 @@ $("#burger").onclick = () => {
   $("#burger").textContent = on ? "✕" : "☰";
 };
 $("#scrim").onclick = () => { document.body.classList.remove("nav"); $("#burger").textContent = "☰"; };
-const THEME_LABEL = {"": "◐ 自動", dark: "● ダーク", light: "○ ライト"};
-function applyTheme(v) {
-  if (v) document.documentElement.setAttribute("data-theme", v);
-  else document.documentElement.removeAttribute("data-theme");
-  localStorage.setItem("obr.theme", v);
-  $("#btheme").textContent = THEME_LABEL[v];
-}
-$("#btheme").onclick = () => {
-  const cur = document.documentElement.getAttribute("data-theme") || "";
-  applyTheme(cur === "" ? "dark" : cur === "dark" ? "light" : "");
-};
 $("#bnew").onclick = () => alert(
   "解説の作成画面はこれから作ります。\n\n" +
   "いまは commentary.json を直接編集してください。\n" +
   "参照は {\"year\":\"2026\",\"id\":\"5.02\"} のように、書いた時点の年度とIDで書きます。");
-$("#bexport").onclick = () => {
-  const b = new Blob([JSON.stringify(S.com, null, 1)], {type: "application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(b); a.download = "commentary.json"; a.click();
-  URL.revokeObjectURL(a.href);
-};
-
 /* ===== 起動 ===== */
 (async function boot() {
-  applyTheme(localStorage.getItem("obr.theme") || "");
   try {
     S.manifest = await getJSON("manifest.json");
     S.com = await getJSON("commentary.json");
@@ -186,13 +263,14 @@ $("#bexport").onclick = () => {
     S.year = S.manifest.latest;
     $("#yearsel").innerHTML = S.years
       .map(y => '<option' + (y === S.year ? " selected" : "") + ">" + y + "</option>").join("");
-    document.title = S.com.title || "コンメンタール";
-    $("#brand h1").textContent = S.com.title || "コンメンタール";
+    // 期間外の解説を名指しで開いた場合は、隠したままにしない
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const target = S.com.entries.find(e => e.id === hash);
+    if (target && !inTerm(target)) S.past = true;
     buildNav();
     await render();
     $("#msg").hidden = true;
     $("#app").hidden = false;
-    const hash = decodeURIComponent(location.hash.slice(1));
     if (hash) document.getElementById(hash)?.scrollIntoView({block: "start"});
   } catch (e) {
     $("#msg").innerHTML = "<div><p><b>読み込めませんでした</b></p>" +

@@ -70,15 +70,6 @@ async function computeDiff(fromY, toY) {
 
 const Y = () => S.cache[S.year];
 
-/* ===== 注釈 ===== */
-const LS = "obr.annotations";
-let fileAnn = [], localAnn = [];
-try { localAnn = JSON.parse(localStorage.getItem(LS) || "[]"); } catch (e) { localAnn = []; }
-const TYPE_JA = {amendment: "改正", interpretation: "解釈", case: "事例", memo: "メモ"};
-const allAnn = () => fileAnn.concat(localAnn);
-const annFor = id => allAnn().filter(a => (a.target || []).includes(id));
-const saveLocal = () => localStorage.setItem(LS, JSON.stringify(localAnn));
-
 /* ===== 描画（条文） ===== */
 // 参照の書き方は2通りある: 圧縮形 5.06b3 と 展開形 5.06（b）（3）
 const REF_RE = /(?<![0-9.])([0-9]{1,2}\.[0-9]{2})((?:（[0-9a-zA-Z]{1,3}）)+|[a-z][0-9]{0,2})?(?![0-9])/g;
@@ -119,39 +110,18 @@ function para(text, tail) {
 }
 const noteCls = k => "k-" + String(k || "").replace(/[0-9A-Z]+$/, "");
 
-function annHTML(id) {
-  const list = annFor(id);
-  if (!list.length) return "";
-  return list.map(a => {
-    const meta = [TYPE_JA[a.type] || a.type, a.effective ? a.effective + "年" : "", a.source || ""]
-      .filter(Boolean).join(" ・ ");
-    const mine = localAnn.includes(a);
-    const others = (a.target || []).filter(t => t !== id);
-    const also = others.length
-      ? '<span class="meta">他: ' + others.map(t =>
-          '<a class="xref" data-go="' + esc(t) + '">' + esc((Y().byId.get(t) || {}).cite || t) + "</a>"
-        ).join("、") + "</span>"
-      : "";
-    return '<div class="amd"><div class="ah">' + esc(a.title || "（無題）") +
-      '<span class="meta">' + esc(meta) + "</span>" + also + "</div>" +
-      (a.body ? '<div class="body">' + para(a.body.split("\n")) + "</div>" : "") +
-      (mine ? '<div class="acts"><button data-edit="' + esc(a.id) + '">編集</button>' +
-              '<button data-del="' + esc(a.id) + '">削除</button></div>' : "") + "</div>";
-  }).join("");
-}
-
 function renderNode(n) {
   const chg = S.changedIn[S.year] && S.changedIn[S.year].has(n.id) ? " chg" : "";
   if (n.level === "note") {
     return '<div class="note node ' + noteCls(n.kind) + chg + '" id="' + esc(n.id) + '">' +
       '<div class="nh">' + esc(n.label || "") + comHTML(n.id) + "</div>" +
-      '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + renderKids(n) + "</div>";
+      '<div class="body">' + para(headText(n)) + "</div>" + renderKids(n) + "</div>";
   }
   if (n.level === "term") {
     return '<div class="term node' + chg + '" id="' + esc(n.id) + '">' +
       '<h3><span class="n">' + esc(n.label || "") + "</span><span>" + esc(n.title || "") + "</span>" +
       comHTML(n.id) + "</h3>" +
-      '<div class="body">' + para(headText(n)) + "</div>" + annHTML(n.id) + "</div>";
+      '<div class="body">' + para(headText(n)) + "</div></div>";
   }
   const head = '<div class="head">' +
     (n.label ? '<span class="lbl">' + esc(n.label) + "</span>" : "") +
@@ -159,7 +129,7 @@ function renderNode(n) {
       (n.title ? '<span class="ttl">' + esc(n.title) + "</span>" + (n.text ? "　" : "") : "") +
       para(headText(n)) + comHTML(n.id) + "</div></div>";
   return '<div class="node ' + n.level + chg + '" id="' + esc(n.id) + '">' + head +
-    annHTML(n.id) + renderKids(n) + "</div>";
+    renderKids(n) + "</div>";
 }
 // 本文の途中に注記が挟まることがある（3.01のボールを汚す禁止など）。
 // 子ノードが持つ pos（親の本文を何段落読んだ時点で現れるか）で本文と交互に並べる。
@@ -249,7 +219,7 @@ function sectionHTML(s, y) {
       esc(s.title || "") + "</span>" + comHTML(s.id) + "</h2>";
   return '<section class="sect" data-sec="' + esc(s.id) + '">' + head +
     '<div class="body">' + para(headText(s)) + "</div>" +
-    annHTML(s.id) + renderKids(s, false) + "</section>";
+    renderKids(s, false) + "</section>";
 }
 
 /* サイドバーの現在位置。画面上端に一番近い条を選ぶ */
@@ -290,19 +260,17 @@ function show(which) {
 function buildNav() {
   const y = Y();
   const chg = S.changedIn[S.year] || new Set();
-  const annSet = new Set(allAnn().flatMap(a => a.target || []));
   let h = "";
   for (const c of y.chapters) {
     h += '<div class="navch">' + esc((c.label ? c.label + "　" : "") + (c.title || "")) + "</div>";
     for (const s of (WHOLE.has(c.id) ? [c] : (y.kids.get(c.id) || []))) {
       let cnt = 0;
       for (const id of chg) if (y.sectionOf.get(id) === s.id) cnt++;
-      const hasAnn = [...annSet].some(id => y.sectionOf.get(id) === s.id);
       // 1.00 の各条のように表題を持たない条は、番号だけを出して表題欄は空にする
       const num = s.level === "chapter" ? "" : s.level === "group" ? (s.label || s.id) : s.id;
       h += '<button class="navit" data-sec="' + esc(s.id) + '">' +
         '<span class="n">' + esc(num) + "</span>" +
-        '<span class="t">' + esc(s.title || "") + (hasAnn ? " ✎" : "") + "</span>" +
+        '<span class="t">' + esc(s.title || "") + "</span>" +
         (cnt ? '<span class="badge b-chg">' + cnt + "</span>" : "") + "</button>";
     }
   }
@@ -525,93 +493,16 @@ function go(id) {
   toggleNav(false);
 }
 
+/* 規則を読む／年度を比較する の2つ。比較は規則の見方の一つなので、
+   目次と並ぶ独立した区画にはせず、道具として下に置く */
 function setMode(m) {
   S.mode = m;
   document.querySelectorAll("#modes button").forEach(b => b.classList.toggle("on", b.dataset.mode === m));
+  $("#bdiff").classList.toggle("on", m === "diff");
   if (m === "diff") renderDiff();
   else renderAll();
 }
-
-/* ===== 注釈ダイアログ ===== */
-let editing = null;
-let dlgTargets = [];      // 注釈の対象。複数の条文にまたがることがある
-
-function chipHTML(id) {
-  const n = Y().byId.get(id);
-  const label = n ? (n.cite || n.id) : id;
-  let title = n ? (n.title || (n.text || []).join("")) : "";
-  if (title.length > 14) title = title.slice(0, 14) + "…";
-  return '<span class="chip2"><b>' + esc(label) + "</b>" + (title ? esc(title) : "") +
-    '<button type="button" data-drop="' + esc(id) + '">✕</button></span>';
-}
-function renderChips() {
-  $("#chips").innerHTML = dlgTargets.map(chipHTML).join("");
-}
-function addTarget(id) {
-  if (!dlgTargets.includes(id)) dlgTargets.push(id);
-  renderChips();
-  $("#f_pick").value = "";
-  $("#picklist").hidden = true;
-}
-function searchTargets(q) {
-  const list = $("#picklist");
-  const s = q.trim().toLowerCase();
-  if (!s) { list.hidden = true; return; }
-  const y = Y();
-  const hits = [];
-  for (const n of y.nodes) {
-    if (dlgTargets.includes(n.id)) continue;
-    const hay = (n.id + " " + (n.cite || "") + " " + (n.title || "") + " " +
-                 (n.text || []).join(" ")).toLowerCase();
-    if (hay.includes(s)) hits.push(n);
-    if (hits.length >= 12) break;
-  }
-  list.innerHTML = hits.length
-    ? hits.map(n => '<button type="button" data-pick="' + esc(n.id) + '">' +
-        '<span class="id">' + esc(n.cite || n.id) + "</span>" +
-        esc((n.title || (n.text || []).join("")).slice(0, 40)) + "</button>").join("")
-    : '<button type="button" disabled style="color:var(--fg3)">該当なし</button>';
-  list.hidden = false;
-}
-
-function openDlg(ex) {
-  editing = ex || null;
-  dlgTargets = ex ? (ex.target || []).slice() : (S.section ? [S.section] : []);
-  $("#dlgtitle").textContent = ex ? "注釈を編集" : "注釈を作成";
-  renderChips();
-  $("#f_pick").value = "";
-  $("#picklist").hidden = true;
-  $("#f_type").value = (ex && ex.type) || "amendment";
-  $("#f_effective").value = (ex && ex.effective) || "";
-  $("#f_title").value = (ex && ex.title) || "";
-  $("#f_body").value = (ex && ex.body) || "";
-  $("#f_source").value = (ex && ex.source) || "";
-  $("#dlg").showModal();
-  setTimeout(() => $("#f_title").focus(), 30);
-}
-
-$("#dlg").addEventListener("close", () => {
-  if ($("#dlg").returnValue !== "save") return;
-  if (!dlgTargets.length) { alert("対象の条文を1つ以上選んでください。"); return; }
-  const rec = {
-    id: (editing && editing.id) || "loc-" + Date.now().toString(36),
-    target: dlgTargets.slice(), type: $("#f_type").value,
-    effective: $("#f_effective").value.trim(), title: $("#f_title").value.trim(),
-    body: $("#f_body").value.trim(), source: $("#f_source").value.trim(),
-    year: S.year, created: (editing && editing.created) || new Date().toISOString().slice(0, 10),
-  };
-  if (editing) localAnn[localAnn.indexOf(editing)] = rec; else localAnn.push(rec);
-  saveLocal(); Y().html = null; buildNav(); renderAll();
-});
-
-$("#f_pick").addEventListener("input", e => searchTargets(e.target.value));
-$("#pick").addEventListener("click", e => {
-  const pick = e.target.closest("[data-pick]");
-  if (pick) { addTarget(pick.dataset.pick); return; }
-  const drop = e.target.closest("[data-drop]");
-  if (drop) { dlgTargets = dlgTargets.filter(x => x !== drop.dataset.drop); renderChips(); }
-});
-$("#bnew").onclick = () => openDlg(null);
+$("#bdiff").onclick = () => setMode(S.mode === "diff" ? "read" : "diff");
 
 /* ===== イベント ===== */
 document.addEventListener("click", async e => {
@@ -632,14 +523,6 @@ document.addEventListener("click", async e => {
   if (m && m.dataset.mode) { setMode(m.dataset.mode); return; }
   const u = e.target.closest("[data-uni]");
   if (u) { S.uni = u.dataset.uni === "1"; renderDiff(); return; }
-  const ed = e.target.closest("[data-edit]");
-  if (ed) { openDlg(localAnn.find(a => a.id === ed.dataset.edit)); return; }
-  const del = e.target.closest("[data-del]");
-  if (del) {
-    if (!confirm("この注釈を削除しますか？")) return;
-    localAnn = localAnn.filter(a => a.id !== del.dataset.del);
-    saveLocal(); Y().html = null; buildNav(); renderAll(); return;
-  }
 });
 $("#diffview").addEventListener("change", e => {
   if (e.target.id === "onlychg") { S.onlyChanged = e.target.checked; renderDiff(); return; }
@@ -685,48 +568,7 @@ document.addEventListener("keydown", e => {
   }
   if (e.key === "Escape" && document.activeElement === $("#q")) { $("#q").value = ""; search(""); $("#q").blur(); }
 });
-/* 既定はOSの設定に従う。ボタンで 自動 → ダーク → ライト と切り替えられる。
-   今どれなのかが分からないと困るので、ボタン自身に状態を出す */
-const THEME_LABEL = {"": "◐ 自動", dark: "● ダーク", light: "○ ライト"};
-function applyTheme(v) {
-  if (v) document.documentElement.setAttribute("data-theme", v);
-  else document.documentElement.removeAttribute("data-theme");
-  localStorage.setItem("obr.theme", v);
-  const b = $("#btheme");
-  if (b) {
-    b.textContent = THEME_LABEL[v];
-    b.title = v ? "表示: " + THEME_LABEL[v].slice(2) : "表示: OSの設定に従う";
-  }
-}
-$("#btheme").onclick = () => {
-  const cur = document.documentElement.getAttribute("data-theme") || "";
-  applyTheme(cur === "" ? "dark" : cur === "dark" ? "light" : "");
-};
-$("#bexport").onclick = () => {
-  const out = {version: 1, updated: new Date().toISOString().slice(0, 10), annotations: allAnn()};
-  const b = new Blob([JSON.stringify(out, null, 1)], {type: "application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(b); a.download = "annotations.json"; a.click();
-  URL.revokeObjectURL(a.href);
-};
-$("#bimport").onclick = () => $("#fileinput").click();
-$("#fileinput").onchange = () => {
-  const f = $("#fileinput").files[0]; if (!f) return;
-  const r = new FileReader();
-  r.onload = () => {
-    try {
-      const inc = (JSON.parse(r.result).annotations) || [];
-      const known = new Set(allAnn().map(a => a.id));
-      let k = 0;
-      for (const a of inc) if (!known.has(a.id)) { localAnn.push(a); k++; }
-      saveLocal(); Y().html = null; buildNav(); renderAll();
-      alert(k + " 件を読み込みました。");
-    } catch (err) { alert("読み込めませんでした: " + err.message); }
-  };
-  r.readAsText(f); $("#fileinput").value = "";
-};
-
-/* ===== コンメンタールへのリンク =====
+/* ===== 解説へのリンク =====
    解説の参照は書いた年度のIDなので、表示中の年度へ読み替えてから紐づける。
    必要な区間の差分だけ計算するので、全年度は読み込まない。 */
 let comIndex = new Map();      // 表示年度のID -> [{id,title}]
@@ -745,11 +587,14 @@ async function buildCommentaryIndex() {
   const chain = makeChain(diffs);
   for (const e of com.entries || []) {
     if (!isValid(e.valid, S.year)) continue;
-    for (const r of e.refs || []) {
+    // 条そのものへの参照に加え、各要件が指す項からも解説へ辿れるようにする
+    const refs = (e.refs || []).concat((e.rules || []).map(r => r.ref).filter(Boolean));
+    for (const r of refs) {
       const id = resolveAcrossYears(r, S.year, ys, chain);
       if (!id) continue;
       if (!comIndex.has(id)) comIndex.set(id, []);
-      comIndex.get(id).push({id: e.id, title: e.title});
+      const list = comIndex.get(id);
+      if (!list.some(x => x.id === e.id)) list.push({id: e.id, title: e.title});
     }
   }
 }
@@ -776,10 +621,8 @@ async function computeChanged() {
 
 /* ===== 起動 ===== */
 (async function boot() {
-  applyTheme(localStorage.getItem("obr.theme") || "");
   try {
     S.manifest = await getJSON("manifest.json");
-    try { fileAnn = (await getJSON(S.manifest.annotations)).annotations || []; } catch (e) { fileAnn = []; }
     S.year = S.manifest.latest;
     $("#yearsel").innerHTML = S.manifest.years
       .map(x => '<option' + (x.year === S.year ? " selected" : "") + ">" + x.year + "</option>").join("");

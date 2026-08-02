@@ -125,6 +125,7 @@ function entryHTML(e, res) {
     (e.purpose ? '<div class="pur"><span class="lb">趣旨</span><div>' + paras(e.purpose) + "</div></div>" : "") +
     (e.structure ? '<div class="pur"><span class="lb">構成</span><div>' + paras(e.structure) + "</div></div>" : "") +
     rules +
+    (e.thesis ? '<div class="thesis"><span class="lb">総合</span><div>' + paras(e.thesis) + "</div></div>" : "") +
     listHTML("pts", "論点", e.points) +
     related + historyHTML(res.history) +
     (e.body ? '<div class="body">' + paras(e.body) + "</div>" : "") + "</article>";
@@ -182,7 +183,7 @@ function match(e) {
   if (!shown(e)) return false;
   if (S.tag && !(e.tags || []).includes(S.tag)) return false;
   if (!q) return true;
-  const hay = [e.title, e.purpose, e.body, (e.tags || []).join(" "),
+  const hay = [e.title, e.purpose, e.structure, e.thesis, e.body, (e.tags || []).join(" "),
     e.refs.map(r => r.id).join(" "),
     (e.rules || []).map(r => [r.head, (r.elements || []).join(" "), r.effect,
       (r.exceptions || []).join(" "), r.note, r.ref && r.ref.id].join(" ")).join(" "),
@@ -203,10 +204,15 @@ function buildNav() {
   const past = S.com.entries.filter(e => !inTerm(e)).length;
   const tags = new Map();
   for (const e of list) for (const t of (e.tags || [])) tags.set(t, (tags.get(t) || 0) + 1);
-  let h = '<div class="navch">解説</div>';
-  for (const e of list) {
-    h += '<button class="navit' + (inTerm(e) ? "" : " dim") + '" data-jump="' + esc(e.id) + '">' +
-      '<span class="t">' + esc(e.title) + "</span></button>";
+  let h = "";
+  for (const [kind, label] of [[undefined, "条文"], ["term", "用語"]]) {
+    const g = list.filter(e => (e.kind || undefined) === kind);
+    if (!g.length) continue;
+    h += '<div class="navch">' + label + "</div>";
+    for (const e of g) {
+      h += '<button class="navit' + (inTerm(e) ? "" : " dim") + '" data-jump="' + esc(e.id) + '">' +
+        '<span class="t">' + esc(e.title) + "</span></button>";
+    }
   }
   if (past) {
     h += '<button class="navit' + (S.past ? " on" : "") + '" data-past>' +

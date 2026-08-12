@@ -236,6 +236,8 @@ tr>*:first-child{padding-right:1.1em}
     opacity:0;pointer-events:none;transition:opacity .18s}
   body.nav #scrim{opacity:1;pointer-events:auto}
   #doc,#results,#diffview{padding:58px 18px 45vh}
+  #legend{padding:58px 18px 0;gap:.55em 1em}
+  #legend+#doc{padding-top:12px}
   .kids{padding-left:1em}
 }
 @media print{
@@ -256,6 +258,7 @@ tr>*:first-child{padding-right:1.1em}
 .navit.dim .t{color:var(--fg3)}
 .com .refs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .com .ref{display:inline-flex;align-items:baseline;gap:.45em;font-size:12.5px;
+  flex-wrap:wrap;max-width:100%;
   border:1px solid var(--line);border-radius:7px;padding:4px 9px;background:var(--bg);
   text-decoration:none;color:var(--fg)}
 .com .ref:hover{border-color:var(--accent);background:var(--accent-bg)}
@@ -277,6 +280,7 @@ tr>*:first-child{padding-right:1.1em}
   align-items:baseline;flex-wrap:wrap}
 .com .rh .at{font-weight:400}
 .com .at{display:inline-flex;align-items:baseline;gap:.4em;font-size:11.5px;
+  flex-wrap:wrap;max-width:100%;
   border:1px solid var(--line);border-radius:5px;padding:1px 7px;text-decoration:none;color:var(--fg2)}
 .com .at:hover{border-color:var(--accent);background:var(--accent-bg)}
 .com .at b{color:var(--accent);font-variant-numeric:tabular-nums}
@@ -300,17 +304,17 @@ tr>*:first-child{padding-right:1.1em}
 .com .thesis p{margin:0 0 .55em}
 .com .thesis .lb{color:var(--accent);border-color:var(--accent)}
 /* 根拠の身分。定義＝規則書に書いてある / 導出＝他の条文から導ける / 私見＝手がかりがない */
-.src{display:inline-flex;align-items:baseline;gap:.4em;font-size:10.5px;font-weight:700;
-  border-radius:4px;padding:0 6px;margin-right:.6em;line-height:1.7;white-space:nowrap;
-  vertical-align:.08em}
+.src{display:inline-block;font-size:10.5px;font-weight:700;border-radius:4px;
+  padding:0 6px;margin-right:.5em;line-height:1.7;white-space:nowrap;vertical-align:.08em}
+.src:empty{display:none}
 .src-def{background:var(--accent-bg);color:var(--accent);border:1px solid var(--accent)}
 .src-drv{background:var(--chg-bg);color:var(--chg);border:1px solid var(--chg)}
 .src-own{background:transparent;color:var(--fg3);border:1px dashed var(--line)}
-.sat{font-weight:400;font-variant-numeric:tabular-nums}
-.sat a{text-decoration:none}
+.sat{font-size:11.5px;font-variant-numeric:tabular-nums;margin-right:.5em}
+.sat a{text-decoration:none;white-space:nowrap}
 .sat a:hover{text-decoration:underline}
 .sn{display:block;font-size:12.5px;color:var(--fg3);margin-top:.2em;line-height:1.8}
-#legend{max-width:920px;margin:0 auto;padding:0 40px;display:flex;gap:1.2em;flex-wrap:wrap;
+#legend{max-width:920px;margin:0 auto;padding:32px 40px 0;display:flex;gap:.5em 1.2em;flex-wrap:wrap;
   align-items:center;font-size:11.5px;color:var(--fg3);line-height:2.2}
 /* 決定木。左の罫線で分岐を示し、葉に帰結を置く */
 .com .tree{display:flex;gap:.8em;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2)}
@@ -326,7 +330,7 @@ tr>*:first-child{padding-right:1.1em}
 .tc{color:var(--fg2)}
 .tr{font-weight:700;color:var(--accent);margin-left:.6em}
 .tr::before{content:"→ ";font-weight:400;color:var(--fg3)}
-.src.bare{padding:0 5px;margin-left:.5em;margin-right:0}
+
 .com .pts{display:flex;gap:.8em;margin-top:13px;padding-top:12px;border-top:1px solid var(--line2)}
 .com .pts ol{margin:0;padding-left:1.5em;flex:1;min-width:0}
 .com .pts li{margin-bottom:.35em;line-height:1.85;text-align:justify}

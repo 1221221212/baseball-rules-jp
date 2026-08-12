@@ -235,15 +235,18 @@ async function linkSources() {
   for (const el of $("#doc").querySelectorAll(".src[data-at]")) {
     const ids = el.dataset.at.split(",").map(x => x.trim()).filter(Boolean);
     if (!ids.length) continue;
-    const y = await loadYear(S.year);
     const parts = [];
     for (const id of ids) {
       const r = await resolve1({year: WRITTEN_YEAR, id});
       if (r.id && r.node) parts.push('<a href="index.html#' + encodeURIComponent(r.id) + '">' +
         esc(r.node.cite || r.id) + "</a>");
     }
-    if (parts.length) el.innerHTML = el.textContent + '<span class="sat">' + parts.join("・") + "</span>";
-    if (!el.textContent.trim()) el.classList.add("bare");
+    if (!parts.length) continue;
+    const at = document.createElement("span");
+    at.className = "sat";
+    at.innerHTML = parts.join("・");
+    el.after(at);          // 印の中に入れると折り返せず、狭い画面ではみ出す
+    el.removeAttribute("data-at");
   }
 }
 

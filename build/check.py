@@ -155,6 +155,13 @@ def main():
     for a, b in zip(years, years[1:]):
         check_official(a, b)
     check_commentary()
+    print("[画面]")
+    import subprocess
+    r = subprocess.run([sys.executable, os.path.join(HERE, "css_check.py")],
+                       capture_output=True, text=True)
+    print(r.stdout.rstrip())
+    if r.returncode != 0:
+        bad("内容に追随できない指定があります")
     print()
     print("すべて問題なし" if ok else "問題あり")
     sys.exit(0 if ok else 1)

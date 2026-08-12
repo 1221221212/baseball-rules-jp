@@ -22,7 +22,8 @@
   --rep:#b79ae0; --rep-bg:#241d30;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px -14px rgba(0,0,0,.7);
 }}
-*{box-sizing:border-box}
+*{box-sizing:border-box;min-width:0}
+body{overflow-wrap:anywhere}
 [hidden]{display:none !important}
 html,body{margin:0;height:100%}
 body{background:var(--bg);color:var(--fg);font-size:15px;line-height:1.5;
@@ -66,12 +67,13 @@ a{color:var(--accent)}
 .badge{flex:none;font-size:10px;padding:0 5px;border-radius:9px;line-height:16px;font-weight:700}
 .b-chg{background:var(--accent-bg);color:var(--accent)}
 #tools{display:flex;gap:6px;padding:9px 12px;border-top:1px solid var(--line2);background:var(--panel)}
-#tools button{flex:1;font-size:12px;padding:7px 4px;border:1px solid var(--line);
-  background:var(--bg);border-radius:6px;cursor:pointer;color:var(--fg2);white-space:nowrap}
+#tools button{flex:1;min-width:0;font-size:12px;padding:7px 4px;border:1px solid var(--line);
+  background:var(--bg);border-radius:6px;cursor:pointer;color:var(--fg2)}
 #tools button:hover,#tools button.on{color:var(--accent);border-color:var(--accent);
   background:var(--accent-bg)}
 
-#doc,#results,#diffview{max-width:920px;margin:0 auto;padding:32px 40px 45vh}
+#doc,#results,#diffview{max-width:920px;margin:0 auto;
+  padding:32px clamp(14px,4.5vw,40px) 45vh}
 #legend+#doc{padding-top:14px}
 .chaptag{color:var(--fg3);font-size:12px;letter-spacing:.09em;margin-bottom:6px}
 h1.chap{font-size:15px;font-weight:700;color:var(--fg3);letter-spacing:.1em;
@@ -95,7 +97,7 @@ h2.rule .num{font-variant-numeric:tabular-nums}
 .body{line-height:1.95;text-align:justify;min-width:0;flex:1}
 .body p{margin:0 0 .4em}
 .body p:last-child{margin-bottom:0}
-.kids{padding-left:1.8em}
+.kids{padding-left:clamp(.9em,3.2vw,1.8em)}
 .body.cont{margin-top:.55em}
 .node.flash>.head,.node.flash>.nh{background:var(--mark);box-shadow:0 0 0 5px var(--mark);border-radius:3px}
 .xref{color:var(--accent);text-decoration:none;border-bottom:1px dotted currentColor;cursor:pointer}
@@ -222,7 +224,7 @@ tr>*:first-child{padding-right:1.1em}
 #scrim{display:none}
 @media (max-width:820px){
   #app{grid-template-columns:1fr}
-  #side{position:fixed;inset:0 auto 0 0;width:290px;z-index:20;transform:translateX(-100%);
+  #side{position:fixed;inset:0 auto 0 0;width:min(290px,86vw);z-index:20;transform:translateX(-100%);
     transition:transform .18s;box-shadow:var(--shadow)}
   body.nav #side{transform:none}
   #burger{display:block;position:fixed;top:9px;left:9px;z-index:22;width:38px;height:38px;
@@ -235,10 +237,9 @@ tr>*:first-child{padding-right:1.1em}
   #scrim{display:block;position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.38);
     opacity:0;pointer-events:none;transition:opacity .18s}
   body.nav #scrim{opacity:1;pointer-events:auto}
-  #doc,#results,#diffview{padding:58px 18px 45vh}
-  #legend{padding:58px 18px 0;gap:.55em 1em}
+  #doc,#results,#diffview{padding-top:58px}
+  #legend{padding-top:58px;gap:.55em 1em}
   #legend+#doc{padding-top:12px}
-  .kids{padding-left:1em}
 }
 @media print{
   #side,#burger{display:none}#app{display:block;height:auto}
@@ -295,7 +296,7 @@ tr>*:first-child{padding-right:1.1em}
 .com .eff>div{flex:1;min-width:0;line-height:1.9;text-align:justify}
 .com .eff p{margin:0 0 .4em}
 .com .eff .lb{color:var(--accent);border-color:var(--accent)}
-.com .rn{margin:6px 0 0 4.4em;font-size:13px;color:var(--fg2);line-height:1.85;text-align:justify}
+.com .rn{margin:6px 0 0 clamp(0px,4.4em,12vw);font-size:13px;color:var(--fg2);line-height:1.85;text-align:justify}
 .com .rn p{margin:0 0 .4em}
 /* 用例の総体から意義を導く欄。条文の言い換えではなく解釈であることを示す */
 .com .thesis{display:flex;gap:.8em;margin-top:14px;padding-top:13px;
@@ -311,10 +312,11 @@ tr>*:first-child{padding-right:1.1em}
 .src-drv{background:var(--chg-bg);color:var(--chg);border:1px solid var(--chg)}
 .src-own{background:transparent;color:var(--fg3);border:1px dashed var(--line)}
 .sat{font-size:11.5px;font-variant-numeric:tabular-nums;margin-right:.5em}
-.sat a{text-decoration:none;white-space:nowrap}
+.sat a{text-decoration:none}
 .sat a:hover{text-decoration:underline}
 .sn{display:block;font-size:12.5px;color:var(--fg3);margin-top:.2em;line-height:1.8}
-#legend{max-width:920px;margin:0 auto;padding:32px 40px 0;display:flex;gap:.5em 1.2em;flex-wrap:wrap;
+#legend{max-width:920px;margin:0 auto;padding:32px clamp(14px,4.5vw,40px) 0;
+  display:flex;gap:.5em 1.2em;flex-wrap:wrap;
   align-items:center;font-size:11.5px;color:var(--fg3);line-height:2.2}
 /* 決定木。左の罫線で分岐を示し、葉に帰結を置く */
 .com .tree{display:flex;gap:.8em;margin-top:14px;padding-top:13px;border-top:1px solid var(--line2)}
